@@ -1,11 +1,19 @@
 package com.facturaarca.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "condicion_iva")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class CondicionIva extends AuditoriaApp {
 
     @Column(nullable = false)
@@ -13,23 +21,4 @@ public class CondicionIva extends AuditoriaApp {
 
     @Column(nullable = false)
     private String denominacion;
-
-    public CondicionIva() {
-    }
-
-    public int getCodigoAfip() {
-        return codigoAfip;
-    }
-
-    public void setCodigoAfip(int codigoAfip) {
-        this.codigoAfip = codigoAfip;
-    }
-
-    public String getDenominacion() {
-        return denominacion;
-    }
-
-    public void setDenominacion(String denominacion) {
-        this.denominacion = denominacion;
-    }
 }

@@ -1,11 +1,19 @@
 package com.facturaarca.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "tipo_moneda")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class TipoMoneda extends AuditoriaApp {
 
     @Column(nullable = false)
@@ -16,31 +24,4 @@ public class TipoMoneda extends AuditoriaApp {
 
     @Column(nullable = false)
     private String simbolo;
-
-    public TipoMoneda() {
-    }
-
-    public String getCodigoAfip() {
-        return codigoAfip;
-    }
-
-    public void setCodigoAfip(String codigoAfip) {
-        this.codigoAfip = codigoAfip;
-    }
-
-    public String getDenominacion() {
-        return denominacion;
-    }
-
-    public void setDenominacion(String denominacion) {
-        this.denominacion = denominacion;
-    }
-
-    public String getSimbolo() {
-        return simbolo;
-    }
-
-    public void setSimbolo(String simbolo) {
-        this.simbolo = simbolo;
-    }
 }

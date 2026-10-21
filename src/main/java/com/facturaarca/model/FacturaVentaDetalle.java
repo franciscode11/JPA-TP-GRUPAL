@@ -1,21 +1,33 @@
 package com.facturaarca.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "factura_venta_detalle", schema = "factura_venta_schema")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class FacturaVentaDetalle extends EntityId {
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "factura_id", nullable = false)
+    @ToString.Exclude
     private FacturaVenta factura;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lista_precio_articulo_id", nullable = false)
+    @ToString.Exclude
     private ListaPrecioArticulo listaPrecioArticulo;
 
     private String descripcion;
@@ -27,86 +39,9 @@ public class FacturaVentaDetalle extends EntityId {
     private double precioUnitario;
 
     private double porcentajeBonificacion;
-
     private double importeNeto;
-
     private double importeIva;
 
     @Column(nullable = false)
     private double importeSubtotal;
-
-    public FacturaVentaDetalle() {
-    }
-
-    public FacturaVenta getFactura() {
-        return factura;
-    }
-
-    public void setFactura(FacturaVenta factura) {
-        this.factura = factura;
-    }
-
-    public ListaPrecioArticulo getListaPrecioArticulo() {
-        return listaPrecioArticulo;
-    }
-
-    public void setListaPrecioArticulo(ListaPrecioArticulo listaPrecioArticulo) {
-        this.listaPrecioArticulo = listaPrecioArticulo;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
-
-    public double getCantidad() {
-        return cantidad;
-    }
-
-    public void setCantidad(double cantidad) {
-        this.cantidad = cantidad;
-    }
-
-    public double getPrecioUnitario() {
-        return precioUnitario;
-    }
-
-    public void setPrecioUnitario(double precioUnitario) {
-        this.precioUnitario = precioUnitario;
-    }
-
-    public double getPorcentajeBonificacion() {
-        return porcentajeBonificacion;
-    }
-
-    public void setPorcentajeBonificacion(double porcentajeBonificacion) {
-        this.porcentajeBonificacion = porcentajeBonificacion;
-    }
-
-    public double getImporteNeto() {
-        return importeNeto;
-    }
-
-    public void setImporteNeto(double importeNeto) {
-        this.importeNeto = importeNeto;
-    }
-
-    public double getImporteIva() {
-        return importeIva;
-    }
-
-    public void setImporteIva(double importeIva) {
-        this.importeIva = importeIva;
-    }
-
-    public double getImporteSubtotal() {
-        return importeSubtotal;
-    }
-
-    public void setImporteSubtotal(double importeSubtotal) {
-        this.importeSubtotal = importeSubtotal;
-    }
 }

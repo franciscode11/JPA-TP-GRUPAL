@@ -2,9 +2,11 @@ package com.facturaarca;
 
 import com.facturaarca.model.*;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.Date;
 
@@ -12,8 +14,10 @@ public class CargaDatosIniciales {
 
     public static void main(String[] args) {
 
-        EntityManagerFactory emf =
-                Persistence.createEntityManagerFactory("FacturacionPU");
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(FacturaArcaApplication.class)
+                .web(WebApplicationType.NONE)
+                .run(args);
+        EntityManagerFactory emf = context.getBean(EntityManagerFactory.class);
 
         EntityManager em = emf.createEntityManager();
 
@@ -72,6 +76,12 @@ public class CargaDatosIniciales {
             tipoMoneda.setSimbolo("$");
             completarAuditoria(tipoMoneda, usuario);
             em.persist(tipoMoneda);
+
+            CondicionIva condicionIva = new CondicionIva();
+            condicionIva.setCodigoAfip(5);
+            condicionIva.setDenominacion("Consumidor Final");
+            completarAuditoria(condicionIva, usuario);
+            em.persist(condicionIva);
 
             // ==================================================
             // 5. PUNTO DE VENTA
@@ -188,7 +198,7 @@ public class CargaDatosIniciales {
         } finally {
 
             em.close();
-            emf.close();
+            context.close();
         }
     }
 

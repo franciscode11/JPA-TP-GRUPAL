@@ -1,13 +1,22 @@
 package com.facturaarca.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "cliente")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Cliente extends AuditoriaApp {
 
     @Column(nullable = false)
@@ -18,44 +27,11 @@ public class Cliente extends AuditoriaApp {
 
     @OneToOne
     @JoinColumn(name = "contacto_id", nullable = false)
+    @ToString.Exclude
     private Contacto contacto;
 
     @OneToOne
     @JoinColumn(name = "domicilio_id", nullable = false)
+    @ToString.Exclude
     private Domicilio domicilio;
-
-    public Cliente() {
-    }
-
-    public String getCuitCuil() {
-        return cuitCuil;
-    }
-
-    public void setCuitCuil(String cuitCuil) {
-        this.cuitCuil = cuitCuil;
-    }
-
-    public String getDenominacion() {
-        return denominacion;
-    }
-
-    public void setDenominacion(String denominacion) {
-        this.denominacion = denominacion;
-    }
-
-    public Contacto getContacto() {
-        return contacto;
-    }
-
-    public void setContacto(Contacto contacto) {
-        this.contacto = contacto;
-    }
-
-    public Domicilio getDomicilio() {
-        return domicilio;
-    }
-
-    public void setDomicilio(Domicilio domicilio) {
-        this.domicilio = domicilio;
-    }
 }

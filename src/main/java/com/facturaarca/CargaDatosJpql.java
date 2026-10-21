@@ -3,6 +3,7 @@ package com.facturaarca;
 import com.facturaarca.model.Articulo;
 import com.facturaarca.model.AuditoriaApp;
 import com.facturaarca.model.Cliente;
+import com.facturaarca.model.CondicionIva;
 import com.facturaarca.model.Contacto;
 import com.facturaarca.model.Domicilio;
 import com.facturaarca.model.FacturaVenta;
@@ -15,9 +16,11 @@ import com.facturaarca.model.Rubro;
 import com.facturaarca.model.TipoMoneda;
 import com.facturaarca.model.Usuario;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -26,7 +29,10 @@ public class CargaDatosJpql {
     private static final String USUARIO_MARCADOR = "admin_jpql";
 
     public static void main(String[] args) {
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("FacturacionPU");
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(FacturaArcaApplication.class)
+                .web(WebApplicationType.NONE)
+                .run(args);
+        EntityManagerFactory emf = context.getBean(EntityManagerFactory.class);
         EntityManager em = emf.createEntityManager();
 
         try {
@@ -47,7 +53,7 @@ public class CargaDatosJpql {
             e.printStackTrace();
         } finally {
             em.close();
-            emf.close();
+            context.close();
         }
     }
 
@@ -86,6 +92,9 @@ public class CargaDatosJpql {
         );
 
         TipoMoneda pesos = crearTipoMoneda(em, administrador, "PES", "Peso Argentino", "$");
+        CondicionIva responsableInscripto = crearCondicionIva(
+                em, administrador, 1, "IVA Responsable Inscripto"
+        );
 
         PuntoVenta casaCentral = crearPuntoVenta(em, administrador, 1, "Casa Central JPQL");
         PuntoVenta sucursalNorte = crearPuntoVenta(em, administrador, 2, "Sucursal Norte JPQL");
@@ -111,23 +120,23 @@ public class CargaDatosJpql {
         crearPrecio(em, administrador, listaGeneral, articuloSinVentas, 9000);
 
         crearFactura(em, 1001L, fecha(2026, Calendar.JANUARY, 10), administrador, casaCentral,
-                clienteAndina, pesos, "EMITIDA", null, precioMouse, 2, precioTeclado, 1);
+                clienteAndina, responsableInscripto, pesos, "EMITIDA", null, precioMouse, 2, precioTeclado, 1);
         crearFactura(em, 1002L, fecha(2026, Calendar.FEBRUARY, 5), administrador, casaCentral,
-                clienteGeneral, pesos, "EMITIDA", null, precioTeclado, 6, null, 0);
+                clienteGeneral, responsableInscripto, pesos, "EMITIDA", null, precioTeclado, 6, null, 0);
         crearFactura(em, 1003L, fecha(2026, Calendar.MARCH, 12), administrador, sucursalNorte,
-                clienteAndina, pesos, "EMITIDA", null, precioTeclado, 1, null, 0);
+                clienteAndina, responsableInscripto, pesos, "EMITIDA", null, precioTeclado, 1, null, 0);
         crearFactura(em, 1004L, fecha(2026, Calendar.APRIL, 18), administrador, sucursalNorte,
-                clienteGeneral, pesos, "EMITIDA", null, precioAuriculares, 1, null, 0);
+                clienteGeneral, responsableInscripto, pesos, "EMITIDA", null, precioAuriculares, 1, null, 0);
         crearFactura(em, 1005L, fecha(2026, Calendar.MAY, 3), administrador, casaCentral,
-                clienteAndina, pesos, "EMITIDA", null, precioMouse, 1, null, 0);
+                clienteAndina, responsableInscripto, pesos, "EMITIDA", null, precioMouse, 1, null, 0);
         crearFactura(em, 1006L, fecha(2026, Calendar.JUNE, 9), administrador, casaCentral,
-                clienteGeneral, pesos, "PENDIENTE", null, precioTeclado, 1, null, 0);
+                clienteGeneral, responsableInscripto, pesos, "PENDIENTE", null, precioTeclado, 1, null, 0);
         crearFactura(em, 1007L, fecha(2026, Calendar.JULY, 21), administrador, sucursalNorte,
-                clienteAndina, pesos, "EMITIDA", null, precioMouse, 1, precioTeclado, 3);
+                clienteAndina, responsableInscripto, pesos, "EMITIDA", null, precioMouse, 1, precioTeclado, 3);
         crearFactura(em, 1008L, fecha(2026, Calendar.AUGUST, 14), operador, sucursalNorte,
-                clienteGeneral, pesos, "EMITIDA", null, precioAuriculares, 1, null, 0);
+                clienteGeneral, responsableInscripto, pesos, "EMITIDA", null, precioAuriculares, 1, null, 0);
         crearFactura(em, 1009L, fecha(2026, Calendar.SEPTEMBER, 2), operador, casaCentral,
-                clienteAndina, pesos, "ANULADA", fecha(2026, Calendar.SEPTEMBER, 3), precioLampara, 2, null, 0);
+                clienteAndina, responsableInscripto, pesos, "ANULADA", fecha(2026, Calendar.SEPTEMBER, 3), precioLampara, 2, null, 0);
     }
 
     private static Usuario crearUsuario(EntityManager em, String usuario, String nombre, String apellido) {
@@ -172,6 +181,15 @@ public class CargaDatosJpql {
         completarAuditoria(moneda, usuario);
         em.persist(moneda);
         return moneda;
+    }
+
+    private static CondicionIva crearCondicionIva(EntityManager em, Usuario usuario, int codigo, String denominacion) {
+        CondicionIva condicionIva = new CondicionIva();
+        condicionIva.setCodigoAfip(codigo);
+        condicionIva.setDenominacion(denominacion);
+        completarAuditoria(condicionIva, usuario);
+        em.persist(condicionIva);
+        return condicionIva;
     }
 
     private static PuntoVenta crearPuntoVenta(EntityManager em, Usuario usuario, int numero, String descripcion) {
@@ -236,7 +254,8 @@ public class CargaDatosJpql {
     }
 
     private static void crearFactura(EntityManager em, Long numero, Date fechaEmision, Usuario usuario,
-                                     PuntoVenta puntoVenta, Cliente cliente, TipoMoneda moneda, String estado,
+                                     PuntoVenta puntoVenta, Cliente cliente, CondicionIva condicionIva,
+                                     TipoMoneda moneda, String estado,
                                      Date fechaAnulacion, ListaPrecioArticulo primerArticulo, double primeraCantidad,
                                      ListaPrecioArticulo segundoArticulo, double segundaCantidad) {
         FacturaVenta factura = new FacturaVenta();
@@ -244,6 +263,7 @@ public class CargaDatosJpql {
         factura.setFechaEmision(fechaEmision);
         factura.setPuntoVenta(puntoVenta);
         factura.setCliente(cliente);
+        factura.setCondicionIva(condicionIva);
         factura.setTipoMoneda(moneda);
         factura.setEstado(estado);
         factura.setFechaAnulacion(fechaAnulacion);

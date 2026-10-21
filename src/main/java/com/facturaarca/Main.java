@@ -2,9 +2,11 @@ package com.facturaarca;
 
 import com.facturaarca.model.*;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.Date;
 
@@ -16,10 +18,10 @@ public class Main {
         // 1. INICIAR JPA
         // ==================================================
 
-        EntityManagerFactory emf =
-                Persistence.createEntityManagerFactory(
-                        "FacturacionPU"
-                );
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(FacturaArcaApplication.class)
+                .web(WebApplicationType.NONE)
+                .run(args);
+        EntityManagerFactory emf = context.getBean(EntityManagerFactory.class);
 
         EntityManager em =
                 emf.createEntityManager();
@@ -66,13 +68,20 @@ public class Main {
                             1L
                     );
 
+            CondicionIva condicionIva =
+                    em.find(
+                            CondicionIva.class,
+                            1L
+                    );
+
             // Comprobamos que realmente existan
 
             if (usuario == null
                     || puntoVenta == null
                     || listaPrecioArticulo == null
                     || cliente == null
-                    || tipoMoneda == null) {
+                    || tipoMoneda == null
+                    || condicionIva == null) {
 
                 throw new RuntimeException(
                         "No existen los datos iniciales necesarios"
@@ -102,6 +111,10 @@ public class Main {
 
             facturaVenta.setTipoMoneda(
                     tipoMoneda
+            );
+
+            facturaVenta.setCondicionIva(
+                    condicionIva
             );
 
             facturaVenta.setImporteCobrado(
@@ -288,7 +301,7 @@ public class Main {
         } finally {
 
             em.close();
-            emf.close();
+            context.close();
         }
     }
 }

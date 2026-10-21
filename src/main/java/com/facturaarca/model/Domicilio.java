@@ -1,31 +1,19 @@
 package com.facturaarca.model;
 
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "domicilio")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Domicilio extends EntityId {
-
     private String nombreCalle;
     private String numeroCalle;
-
-    public Domicilio() {
-    }
-
-    public String getNombreCalle() {
-        return nombreCalle;
-    }
-
-    public void setNombreCalle(String nombreCalle) {
-        this.nombreCalle = nombreCalle;
-    }
-
-    public String getNumeroCalle() {
-        return numeroCalle;
-    }
-
-    public void setNumeroCalle(String numeroCalle) {
-        this.numeroCalle = numeroCalle;
-    }
 }

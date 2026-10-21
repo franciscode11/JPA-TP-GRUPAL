@@ -7,9 +7,11 @@ import com.facturaarca.model.FacturaVentaDetalle;
 import com.facturaarca.model.Marca;
 import com.facturaarca.model.PuntoVenta;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -21,7 +23,10 @@ public class ConsultasJpql {
     private static final SimpleDateFormat FORMATO_FECHA = new SimpleDateFormat("dd/MM/yyyy");
 
     public static void main(String[] args) {
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("FacturacionPU");
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(FacturaArcaApplication.class)
+                .web(WebApplicationType.NONE)
+                .run(args);
+        EntityManagerFactory emf = context.getBean(EntityManagerFactory.class);
         EntityManager em = emf.createEntityManager();
 
         try {
@@ -52,7 +57,7 @@ public class ConsultasJpql {
             consulta20CategoriaDeFacturas(em);
         } finally {
             em.close();
-            emf.close();
+            context.close();
         }
     }
 

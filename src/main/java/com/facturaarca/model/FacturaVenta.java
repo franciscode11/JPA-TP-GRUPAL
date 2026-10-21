@@ -1,14 +1,20 @@
 package com.facturaarca.model;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -16,24 +22,36 @@ import java.util.List;
 
 @Entity
 @Table(name = "factura_venta", schema = "factura_venta_schema")
+@Getter
+@Setter
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class FacturaVenta extends AuditoriaApp {
 
     private Long numero;
 
-    @ManyToOne
-    @JoinColumn(name = "cliente_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_id")
+    @ToString.Exclude
     private Cliente cliente;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "condicion_iva_id", nullable = false)
+    @ToString.Exclude
+    private CondicionIva condicionIva;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tipo_moneda_id", nullable = false)
+    @ToString.Exclude
     private TipoMoneda tipoMoneda;
 
-    @Temporal(TemporalType.TIMESTAMP)
+    @Temporal(TemporalType.DATE)
     @Column(nullable = false)
     private Date fechaEmision;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "punto_venta_id", nullable = false)
+    @ToString.Exclude
     private PuntoVenta puntoVenta;
 
     private double importeCobrado;
@@ -58,145 +76,17 @@ public class FacturaVenta extends AuditoriaApp {
 
     private String observaciones;
 
-    @OneToMany(
-            mappedBy = "factura",
-            cascade = CascadeType.ALL
-    )
+    @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
     private List<FacturaVentaDetalle> detalles = new ArrayList<>();
-
-    public FacturaVenta() {
-    }
 
     public void agregarDetalle(FacturaVentaDetalle detalle) {
         detalles.add(detalle);
         detalle.setFactura(this);
     }
 
-    public Long getNumero() {
-        return numero;
-    }
-
-    public void setNumero(Long numero) {
-        this.numero = numero;
-    }
-
-    public Cliente getCliente() {
-        return cliente;
-    }
-
-    public void setCliente(Cliente cliente) {
-        this.cliente = cliente;
-    }
-
-    public TipoMoneda getTipoMoneda() {
-        return tipoMoneda;
-    }
-
-    public void setTipoMoneda(TipoMoneda tipoMoneda) {
-        this.tipoMoneda = tipoMoneda;
-    }
-
-    public Date getFechaEmision() {
-        return fechaEmision;
-    }
-
-    public void setFechaEmision(Date fechaEmision) {
-        this.fechaEmision = fechaEmision;
-    }
-
-    public PuntoVenta getPuntoVenta() {
-        return puntoVenta;
-    }
-
-    public void setPuntoVenta(PuntoVenta puntoVenta) {
-        this.puntoVenta = puntoVenta;
-    }
-
-    public double getImporteCobrado() {
-        return importeCobrado;
-    }
-
-    public void setImporteCobrado(double importeCobrado) {
-        this.importeCobrado = importeCobrado;
-    }
-
-    public double getImporteSaldo() {
-        return importeSaldo;
-    }
-
-    public void setImporteSaldo(double importeSaldo) {
-        this.importeSaldo = importeSaldo;
-    }
-
-    public double getImporteTotal() {
-        return importeTotal;
-    }
-
-    public void setImporteTotal(double importeTotal) {
-        this.importeTotal = importeTotal;
-    }
-
-    public String getCae() {
-        return cae;
-    }
-
-    public void setCae(String cae) {
-        this.cae = cae;
-    }
-
-    public Date getCaeFechaVencimiento() {
-        return caeFechaVencimiento;
-    }
-
-    public void setCaeFechaVencimiento(Date caeFechaVencimiento) {
-        this.caeFechaVencimiento = caeFechaVencimiento;
-    }
-
-    public String getResultadoAfip() {
-        return resultadoAfip;
-    }
-
-    public void setResultadoAfip(String resultadoAfip) {
-        this.resultadoAfip = resultadoAfip;
-    }
-
-    public String getMotivoRechazo() {
-        return motivoRechazo;
-    }
-
-    public void setMotivoRechazo(String motivoRechazo) {
-        this.motivoRechazo = motivoRechazo;
-    }
-
-    public String getEstado() {
-        return estado;
-    }
-
-    public void setEstado(String estado) {
-        this.estado = estado;
-    }
-
-    public Date getFechaAnulacion() {
-        return fechaAnulacion;
-    }
-
-    public void setFechaAnulacion(Date fechaAnulacion) {
-        this.fechaAnulacion = fechaAnulacion;
-    }
-
-    public String getObservaciones() {
-        return observaciones;
-    }
-
-    public void setObservaciones(String observaciones) {
-        this.observaciones = observaciones;
-    }
-
-    public List<FacturaVentaDetalle> getDetalles() {
-        return detalles;
-    }
-
-    public void setDetalles(List<FacturaVentaDetalle> detalles) {
-        this.detalles = detalles;
+    public void quitarDetalle(FacturaVentaDetalle detalle) {
+        detalles.remove(detalle);
+        detalle.setFactura(null);
     }
 }
