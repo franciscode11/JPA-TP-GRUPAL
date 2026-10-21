@@ -25,6 +25,9 @@ const estadoCarga = document.querySelector<HTMLElement>("#estado-carga")!;
 const contador = document.querySelector<HTMLElement>("#contador-resultados")!;
 const totalVista = document.querySelector<HTMLElement>("#total-vista")!;
 const aviso = document.querySelector<HTMLElement>("#aviso")!;
+const seccionAlta = document.querySelector<HTMLElement>("#seccion-alta")!;
+const mostrarFactura = document.querySelector<HTMLButtonElement>("#mostrar-factura")!;
+const cerrarFactura = document.querySelector<HTMLButtonElement>("#cerrar-factura")!;
 const modalConfirmacion = document.querySelector<HTMLDialogElement>("#modal-confirmacion")!;
 const modalTipo = document.querySelector<HTMLElement>("#modal-tipo")!;
 const modalTitulo = document.querySelector<HTMLElement>("#modal-titulo")!;
@@ -59,6 +62,46 @@ function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
   aviso.textContent = mensaje;
   aviso.className = `aviso visible ${tipo}`;
   window.setTimeout(() => aviso.classList.remove("visible"), 3800);
+}
+
+function personalizarFecha(input: HTMLInputElement): void {
+  if (input.closest(".fecha-personalizada")) return;
+
+  const contenedor = document.createElement("div");
+  contenedor.className = "fecha-personalizada";
+  input.before(contenedor);
+  contenedor.append(input);
+
+  const boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "fecha-boton";
+  boton.setAttribute("aria-label", `Abrir calendario de ${input.closest("label")?.textContent?.trim() || "fecha"}`);
+  boton.innerHTML = '<span class="icono-calendario" aria-hidden="true"></span>';
+  boton.addEventListener("click", () => {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  });
+  contenedor.append(boton);
+}
+
+function personalizarFechas(): void {
+  document.querySelectorAll<HTMLInputElement>('input.control[type="date"]').forEach(personalizarFecha);
+}
+
+function abrirFormularioFactura(): void {
+  seccionAlta.hidden = false;
+  mostrarFactura.setAttribute("aria-expanded", "true");
+  seccionAlta.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.setTimeout(() => elemento<HTMLInputElement>("numero-factura").focus(), 250);
+}
+
+function ocultarFormularioFactura(devolverFoco = true): void {
+  seccionAlta.hidden = true;
+  mostrarFactura.setAttribute("aria-expanded", "false");
+  if (devolverFoco) mostrarFactura.focus();
 }
 
 type DatosConfirmacion = {
@@ -381,6 +424,8 @@ async function crearFactura(evento: SubmitEvent): Promise<void> {
     agregarItem();
     personalizarSelectores(altaFormulario);
     await cargarFacturas();
+    ocultarFormularioFactura(false);
+    mostrarFactura.focus();
   } catch (error) {
     notificar((error as Error).message, "error");
   } finally {
@@ -426,6 +471,8 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
 }
 
 function enlazarEventos(): void {
+  mostrarFactura.addEventListener("click", abrirFormularioFactura);
+  cerrarFactura.addEventListener("click", () => ocultarFormularioFactura());
   buscarFormulario.addEventListener("submit", (evento) => {
     evento.preventDefault();
     void cargarFacturas();
@@ -465,6 +512,7 @@ function enlazarEventos(): void {
 async function iniciar(): Promise<void> {
   elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
   enlazarEventos();
+  personalizarFechas();
   personalizarSelectores(buscarFormulario);
   try {
     catalogos = await servicio.obtenerCatalogos();

@@ -15,12 +15,13 @@
       <h1>Comprobantes de venta</h1>
       <p class="bajada">Alta, consulta y administración de facturas desde un único panel.</p>
     </div>
+    <button id="mostrar-factura" class="boton primario boton-nueva" type="button" aria-controls="seccion-alta" aria-expanded="false">+ Nueva factura</button>
   </header>
 
   <main>
     <section class="panel" aria-labelledby="titulo-filtros">
       <div class="titulo-seccion">
-        <div><span class="paso">01</span><h2 id="titulo-filtros">Buscar comprobantes</h2></div>
+        <div><h2 id="titulo-filtros">Buscar comprobantes</h2></div>
         <span id="contador-resultados" class="contador">0 comprobantes</span>
       </div>
       <form id="filtros-form" class="grilla filtros">
@@ -44,10 +45,13 @@
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="titulo-alta">
+    <section id="seccion-alta" class="panel panel-alta" aria-labelledby="titulo-alta" hidden>
       <div class="titulo-seccion">
-        <div><span class="paso">02</span><h2 id="titulo-alta">Nueva factura</h2></div>
-        <span class="ayuda">Los importes se calculan automáticamente con IVA 21%</span>
+        <div>
+          <h2 id="titulo-alta">Nueva factura</h2>
+          <span class="ayuda">Los importes se calculan automáticamente con IVA 21%</span>
+        </div>
+        <button id="cerrar-factura" class="boton secundario boton-cerrar" type="button">Cerrar</button>
       </div>
       <form id="factura-form">
         <div class="grilla cabecera-factura">
@@ -82,7 +86,7 @@
 
     <section class="panel" aria-labelledby="titulo-listado">
       <div class="titulo-seccion">
-        <div><span class="paso">03</span><h2 id="titulo-listado">Comprobantes registrados</h2></div>
+        <div><h2 id="titulo-listado">Comprobantes registrados</h2></div>
         <span id="estado-carga" class="cargando">Actualizando…</span>
       </div>
       <div class="tabla-contenedor">
@@ -93,8 +97,6 @@
       </div>
     </section>
   </main>
-
-  <footer>Factura ARCA · Trabajo Práctico de Programación</footer>
 
   <dialog id="modal-confirmacion" class="modal-confirmacion" aria-labelledby="modal-titulo" aria-describedby="modal-descripcion">
     <div class="modal-contenido">

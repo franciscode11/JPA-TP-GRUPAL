@@ -12,6 +12,9 @@ const estadoCarga = document.querySelector("#estado-carga");
 const contador = document.querySelector("#contador-resultados");
 const totalVista = document.querySelector("#total-vista");
 const aviso = document.querySelector("#aviso");
+const seccionAlta = document.querySelector("#seccion-alta");
+const mostrarFactura = document.querySelector("#mostrar-factura");
+const cerrarFactura = document.querySelector("#cerrar-factura");
 const modalConfirmacion = document.querySelector("#modal-confirmacion");
 const modalTipo = document.querySelector("#modal-tipo");
 const modalTitulo = document.querySelector("#modal-titulo");
@@ -41,6 +44,43 @@ function notificar(mensaje, tipo = "exito") {
     aviso.textContent = mensaje;
     aviso.className = `aviso visible ${tipo}`;
     window.setTimeout(() => aviso.classList.remove("visible"), 3800);
+}
+function personalizarFecha(input) {
+    if (input.closest(".fecha-personalizada"))
+        return;
+    const contenedor = document.createElement("div");
+    contenedor.className = "fecha-personalizada";
+    input.before(contenedor);
+    contenedor.append(input);
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "fecha-boton";
+    boton.setAttribute("aria-label", `Abrir calendario de ${input.closest("label")?.textContent?.trim() || "fecha"}`);
+    boton.innerHTML = '<span class="icono-calendario" aria-hidden="true"></span>';
+    boton.addEventListener("click", () => {
+        try {
+            input.showPicker();
+        }
+        catch {
+            input.focus();
+        }
+    });
+    contenedor.append(boton);
+}
+function personalizarFechas() {
+    document.querySelectorAll('input.control[type="date"]').forEach(personalizarFecha);
+}
+function abrirFormularioFactura() {
+    seccionAlta.hidden = false;
+    mostrarFactura.setAttribute("aria-expanded", "true");
+    seccionAlta.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => elemento("numero-factura").focus(), 250);
+}
+function ocultarFormularioFactura(devolverFoco = true) {
+    seccionAlta.hidden = true;
+    mostrarFactura.setAttribute("aria-expanded", "false");
+    if (devolverFoco)
+        mostrarFactura.focus();
 }
 function pedirConfirmacion(datos) {
     cerrarSelectores();
@@ -343,6 +383,8 @@ async function crearFactura(evento) {
         agregarItem();
         personalizarSelectores(altaFormulario);
         await cargarFacturas();
+        ocultarFormularioFactura(false);
+        mostrarFactura.focus();
     }
     catch (error) {
         notificar(error.message, "error");
@@ -392,6 +434,8 @@ async function accionFactura(evento) {
     }
 }
 function enlazarEventos() {
+    mostrarFactura.addEventListener("click", abrirFormularioFactura);
+    cerrarFactura.addEventListener("click", () => ocultarFormularioFactura());
     buscarFormulario.addEventListener("submit", (evento) => {
         evento.preventDefault();
         void cargarFacturas();
@@ -433,6 +477,7 @@ function enlazarEventos() {
 async function iniciar() {
     elemento("fecha-emision").valueAsDate = new Date();
     enlazarEventos();
+    personalizarFechas();
     personalizarSelectores(buscarFormulario);
     try {
         catalogos = await servicio.obtenerCatalogos();
