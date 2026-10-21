@@ -25,6 +25,13 @@ const estadoCarga = document.querySelector<HTMLElement>("#estado-carga")!;
 const contador = document.querySelector<HTMLElement>("#contador-resultados")!;
 const totalVista = document.querySelector<HTMLElement>("#total-vista")!;
 const aviso = document.querySelector<HTMLElement>("#aviso")!;
+const modalConfirmacion = document.querySelector<HTMLDialogElement>("#modal-confirmacion")!;
+const modalTipo = document.querySelector<HTMLElement>("#modal-tipo")!;
+const modalTitulo = document.querySelector<HTMLElement>("#modal-titulo")!;
+const modalDescripcion = document.querySelector<HTMLElement>("#modal-descripcion")!;
+const modalCancelar = document.querySelector<HTMLButtonElement>("#modal-cancelar")!;
+const modalConfirmar = document.querySelector<HTMLButtonElement>("#modal-confirmar")!;
+let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 
 function elemento<T extends HTMLElement>(id: string): T {
   return document.querySelector<T>(`#${id}`)!;
@@ -52,6 +59,38 @@ function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
   aviso.textContent = mensaje;
   aviso.className = `aviso visible ${tipo}`;
   window.setTimeout(() => aviso.classList.remove("visible"), 3800);
+}
+
+type DatosConfirmacion = {
+  tipo: "Anular comprobante" | "Eliminar comprobante";
+  titulo: string;
+  descripcion: string;
+  etiquetaConfirmar: string;
+  accion: "anular" | "eliminar";
+};
+
+function pedirConfirmacion(datos: DatosConfirmacion): Promise<boolean> {
+  cerrarSelectores();
+  modalTipo.textContent = datos.tipo;
+  modalTitulo.textContent = datos.titulo;
+  modalDescripcion.textContent = datos.descripcion;
+  modalConfirmar.textContent = datos.etiquetaConfirmar;
+  modalConfirmar.dataset.accion = datos.accion;
+  document.body.classList.add("modal-abierto");
+  modalConfirmacion.showModal();
+  modalCancelar.focus();
+
+  return new Promise((resolver) => {
+    resolverConfirmacion = resolver;
+  });
+}
+
+function cerrarConfirmacion(confirmada: boolean): void {
+  if (!modalConfirmacion.open) return;
+  modalConfirmacion.close();
+  document.body.classList.remove("modal-abierto");
+  resolverConfirmacion?.(confirmada);
+  resolverConfirmacion = undefined;
 }
 
 function opciones(datos: OpcionCatalogoDTO[]): string {
@@ -290,8 +329,10 @@ function renderizarFacturas(facturas: FacturaReporteDTO[]): void {
       <td class="numero destacado">${dinero(factura.importeTotal)}</td>
       <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
       <td class="acciones">
-        <button class="boton-tabla anular" type="button" data-id="${factura.id}" ${factura.estado === "ANULADA" ? "disabled" : ""}>Anular</button>
-        <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}">Eliminar</button>
+        <button class="boton-tabla anular" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Conserva la factura y la marca como anulada" ${factura.estado === "ANULADA" ? "disabled" : ""}>Anular</button>
+        <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Borra la factura de forma permanente">
+          <span class="icono-basura" aria-hidden="true"></span><span>Eliminar</span>
+        </button>
       </td>
     </tr>`).join("");
 }
@@ -352,14 +393,29 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
   const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("button[data-id]");
   if (!boton) return;
   const id = Number(boton.dataset.id);
+  const numero = boton.dataset.numero ?? "";
 
   try {
     if (boton.classList.contains("anular")) {
-      if (!window.confirm("¿Querés anular esta factura?")) return;
+      const confirmada = await pedirConfirmacion({
+        tipo: "Anular comprobante",
+        titulo: `¿Anular la factura #${numero}?`,
+        descripcion: "La factura seguirá guardada y visible en el historial, pero quedará marcada como ANULADA.",
+        etiquetaConfirmar: "Sí, anular",
+        accion: "anular",
+      });
+      if (!confirmada) return;
       await servicio.actualizarEstado(id, "ANULADA", "Anulada desde el panel web");
       notificar("La factura quedó anulada.");
     } else if (boton.classList.contains("eliminar")) {
-      if (!window.confirm(`¿Eliminar definitivamente la factura #${boton.dataset.numero}?`)) return;
+      const confirmada = await pedirConfirmacion({
+        tipo: "Eliminar comprobante",
+        titulo: `¿Eliminar la factura #${numero}?`,
+        descripcion: "La factura y todos sus renglones se borrarán de forma permanente. Esta acción no se puede deshacer.",
+        etiquetaConfirmar: "Eliminar definitivamente",
+        accion: "eliminar",
+      });
+      if (!confirmada) return;
       await servicio.eliminarFactura(id);
       notificar("La factura fue eliminada.");
     }
@@ -391,6 +447,15 @@ function enlazarEventos(): void {
   });
   altaFormulario.addEventListener("submit", (evento) => void crearFactura(evento));
   facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
+  modalCancelar.addEventListener("click", () => cerrarConfirmacion(false));
+  modalConfirmar.addEventListener("click", () => cerrarConfirmacion(true));
+  modalConfirmacion.addEventListener("cancel", (evento) => {
+    evento.preventDefault();
+    cerrarConfirmacion(false);
+  });
+  modalConfirmacion.addEventListener("click", (evento) => {
+    if (evento.target === modalConfirmacion) cerrarConfirmacion(false);
+  });
   document.addEventListener("click", (evento) => {
     if (!(evento.target as HTMLElement).closest(".selector-personalizado")) cerrarSelectores();
   });

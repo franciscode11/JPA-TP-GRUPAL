@@ -95,6 +95,19 @@
   </main>
 
   <footer>Factura ARCA · Trabajo Práctico de Programación</footer>
+
+  <dialog id="modal-confirmacion" class="modal-confirmacion" aria-labelledby="modal-titulo" aria-describedby="modal-descripcion">
+    <div class="modal-contenido">
+      <p id="modal-tipo" class="modal-tipo">Confirmar acción</p>
+      <h2 id="modal-titulo">¿Confirmás esta acción?</h2>
+      <p id="modal-descripcion"></p>
+      <div class="modal-acciones">
+        <button id="modal-cancelar" class="boton secundario" type="button">Cancelar</button>
+        <button id="modal-confirmar" class="boton primario" type="button">Confirmar</button>
+      </div>
+    </div>
+  </dialog>
+
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script type="module" src="/js/app.js"></script>
 </body>
