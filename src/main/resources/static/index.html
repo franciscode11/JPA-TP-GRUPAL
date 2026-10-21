@@ -31,7 +31,7 @@
             <option value="">Todos</option><option>EMITIDA</option><option>PENDIENTE</option><option>ANULADA</option>
           </select>
         </label>
-        <label>Monto mínimo<input id="filtro-monto" class="control" type="number" min="0" step="0.01" placeholder="0,00"></label>
+        <label>Monto mínimo<input id="filtro-monto" class="control" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" placeholder="0,00"></label>
         <div class="botonera-filtros">
           <button class="boton secundario" id="limpiar-filtros" type="button">Limpiar</button>
           <button class="boton primario boton-buscar" type="submit"><span class="icono-lupa" aria-hidden="true"></span>Buscar</button>
@@ -54,7 +54,7 @@
       </div>
       <form id="factura-form">
         <div class="grilla cabecera-factura">
-          <label>Número<input id="numero-factura" class="control" type="number" min="1" required placeholder="1001"></label>
+          <label>Número<input id="numero-factura" class="control" type="text" inputmode="numeric" pattern="[0-9]+" required placeholder="1001"></label>
           <label>Fecha de emisión<input id="fecha-emision" class="control" type="date" required></label>
           <label>Cliente<select id="cliente-id" class="control" required></select></label>
           <label>Condición IVA<select id="condicion-iva-id" class="control" required></select></label>

@@ -32,6 +32,9 @@ function elemento(id) {
 function valor(id) {
     return elemento(id).value;
 }
+function numero(texto) {
+    return Number(texto.trim().replace(",", "."));
+}
 function dinero(importe) {
     return new Intl.NumberFormat("es-AR", {
         style: "currency",
@@ -77,8 +80,8 @@ function personalizarFechas() {
 function abrirFormularioFactura() {
     seccionAlta.hidden = false;
     mostrarFactura.setAttribute("aria-expanded", "true");
-    seccionAlta.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => elemento("numero-factura").focus(), 250);
+    seccionAlta.scrollIntoView({ behavior: "auto", block: "start" });
+    elemento("numero-factura").focus({ preventScroll: true });
 }
 function ocultarFormularioFactura(devolverFoco = true) {
     seccionAlta.hidden = true;
@@ -129,11 +132,17 @@ function cerrarSelectores(excepto) {
 function posicionarMenu(trigger, menu) {
     const rectangulo = trigger.getBoundingClientRect();
     const margen = 8;
-    const altoMenu = Math.min(menu.scrollHeight, 280);
-    const abreHaciaArriba = window.innerHeight - rectangulo.bottom < altoMenu + margen
-        && rectangulo.top > altoMenu;
-    menu.style.left = `${Math.max(margen, rectangulo.left)}px`;
-    menu.style.width = `${rectangulo.width}px`;
+    const espacioAbajo = window.innerHeight - rectangulo.bottom - margen;
+    const espacioArriba = rectangulo.top - margen;
+    const altoDeseado = Math.min(menu.scrollHeight, 240);
+    const abreHaciaArriba = espacioAbajo < Math.min(altoDeseado, 180) && espacioArriba > espacioAbajo;
+    const espacioDisponible = abreHaciaArriba ? espacioArriba : espacioAbajo;
+    const altoMenu = Math.max(96, Math.min(altoDeseado, espacioDisponible - 6));
+    const ancho = Math.min(rectangulo.width, window.innerWidth - margen * 2);
+    const izquierda = Math.min(Math.max(margen, rectangulo.left), window.innerWidth - ancho - margen);
+    menu.style.left = `${izquierda}px`;
+    menu.style.width = `${ancho}px`;
+    menu.style.maxHeight = `${altoMenu}px`;
     menu.style.top = abreHaciaArriba
         ? `${Math.max(margen, rectangulo.top - altoMenu - 6)}px`
         : `${rectangulo.bottom + 6}px`;
@@ -298,8 +307,8 @@ function renderizarDetalles() {
         return `
       <tr data-uid="${item.uid}">
         <td><select class="control item-articulo" aria-label="Artículo">${opcionesArticulos}</select></td>
-        <td><input class="control item-cantidad" type="number" min="0.01" step="0.01" value="${item.cantidad}" aria-label="Cantidad"></td>
-        <td><input class="control item-bonificacion" type="number" min="0" max="100" step="0.01" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
+        <td><input class="control item-cantidad" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.cantidad}" aria-label="Cantidad"></td>
+        <td><input class="control item-bonificacion" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
         <td class="numero">${dinero(articulo?.precio ?? 0)}</td>
         <td class="numero destacado">${dinero(subtotal(item))}</td>
         <td><button class="boton-icono eliminar-item" type="button" aria-label="Quitar artículo">×</button></td>
@@ -328,9 +337,9 @@ function sincronizarItem(evento) {
     if (control.classList.contains("item-articulo"))
         item.articuloId = Number(control.value);
     if (control.classList.contains("item-cantidad"))
-        item.cantidad = Number(control.value);
+        item.cantidad = numero(control.value);
     if (control.classList.contains("item-bonificacion"))
-        item.porcentajeBonificacion = Number(control.value);
+        item.porcentajeBonificacion = numero(control.value);
     renderizarDetalles();
 }
 function actualizarNumerosItem(evento) {
@@ -345,9 +354,9 @@ function actualizarNumerosItem(evento) {
     if (!item)
         return;
     if (control.classList.contains("item-cantidad"))
-        item.cantidad = Number(control.value);
+        item.cantidad = numero(control.value);
     if (control.classList.contains("item-bonificacion"))
-        item.porcentajeBonificacion = Number(control.value);
+        item.porcentajeBonificacion = numero(control.value);
     const celdaSubtotal = fila.querySelector("td:nth-child(5)");
     if (celdaSubtotal)
         celdaSubtotal.textContent = dinero(subtotal(item));
@@ -359,7 +368,7 @@ function filtrosActuales() {
         fechaDesde: valor("filtro-desde") || undefined,
         fechaHasta: valor("filtro-hasta") || undefined,
         estado: valor("filtro-estado") || undefined,
-        montoMinimo: monto ? Number(monto) : undefined,
+        montoMinimo: monto ? numero(monto) : undefined,
     };
 }
 function renderizarFacturas(facturas) {
@@ -407,7 +416,7 @@ async function guardarFactura(evento) {
         return;
     }
     const request = {
-        numeroFactura: Number(valor("numero-factura")),
+        numeroFactura: numero(valor("numero-factura")),
         fechaEmision: valor("fecha-emision"),
         clienteId: Number(valor("cliente-id")),
         condicionIvaId: Number(valor("condicion-iva-id")),
@@ -527,6 +536,14 @@ function enlazarEventos() {
         if (!evento.target.closest(".selector-personalizado"))
             cerrarSelectores();
     });
+    document.addEventListener("wheel", (evento) => {
+        if (!evento.target.closest(".selector-menu"))
+            cerrarSelectores();
+    }, { passive: true });
+    document.addEventListener("touchmove", (evento) => {
+        if (!evento.target.closest(".selector-menu"))
+            cerrarSelectores();
+    }, { passive: true });
     window.addEventListener("resize", () => cerrarSelectores());
 }
 async function iniciar() {
