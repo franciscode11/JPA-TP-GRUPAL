@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface CondicionIvaRepository extends JpaRepository<CondicionIva, Long> {
     List<CondicionIva> findAllByOrderByDenominacionAsc();
+
+    boolean existsByCodigoAfip(int codigoAfip);
 }

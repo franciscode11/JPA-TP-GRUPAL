@@ -1,6 +1,7 @@
 package com.facturaarca.service;
 
 import com.facturaarca.dto.FacturaDetalleRequestDTO;
+import com.facturaarca.dto.FacturaEdicionDTO;
 import com.facturaarca.dto.FacturaReporteDTO;
 import com.facturaarca.dto.FacturaRequestDTO;
 import com.facturaarca.exception.RecursoNoEncontradoException;
@@ -99,6 +100,33 @@ public class FacturaService {
         return convertirAReporte(facturaRepository.saveAndFlush(factura));
     }
 
+    @Transactional(readOnly = true)
+    public FacturaEdicionDTO obtenerParaEdicion(Long id) {
+        FacturaVenta factura = buscarFactura(id);
+        return new FacturaEdicionDTO(
+                factura.getId(),
+                factura.getNumero(),
+                factura.getFechaEmision(),
+                factura.getCliente().getId(),
+                factura.getCondicionIva().getId(),
+                puntoVentaRepository.findFirstByNumeroOrderByIdAsc(factura.getPuntoVenta().getNumero())
+                        .map(punto -> punto.getId())
+                        .orElse(factura.getPuntoVenta().getId()),
+                tipoMonedaRepository.findFirstByCodigoAfipOrderByIdAsc(factura.getTipoMoneda().getCodigoAfip())
+                        .map(moneda -> moneda.getId())
+                        .orElse(factura.getTipoMoneda().getId()),
+                factura.getEstado(),
+                factura.getObservaciones(),
+                factura.getDetalles().stream()
+                        .map(detalle -> new FacturaDetalleRequestDTO(
+                                detalle.getListaPrecioArticulo().getArticulo().getId(),
+                                detalle.getCantidad(),
+                                detalle.getPorcentajeBonificacion()
+                        ))
+                        .toList()
+        );
+    }
+
     @Transactional
     public FacturaReporteDTO actualizar(Long id, FacturaRequestDTO request) {
         if (request == null) {
@@ -106,6 +134,10 @@ public class FacturaService {
         }
 
         FacturaVenta factura = buscarFactura(id);
+
+        if ("ANULADA".equals(factura.getEstado())) {
+            throw new IllegalStateException("Una factura anulada se conserva como registro histórico y no puede editarse");
+        }
 
         if (request.getNumeroFactura() != null) {
             validarNumero(request.getNumeroFactura());

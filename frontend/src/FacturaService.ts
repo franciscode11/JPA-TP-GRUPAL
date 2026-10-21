@@ -1,5 +1,6 @@
 import type {
   CatalogosDTO,
+  FacturaEdicionDTO,
   FacturaFiltrosDTO,
   FacturaReporteDTO,
   FacturaRequestDTO,
@@ -22,6 +23,18 @@ export class FacturaService {
   async crearFactura(factura: FacturaRequestDTO): Promise<FacturaReporteDTO> {
     return this.solicitar<FacturaReporteDTO>(this.baseUrl, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(factura),
+    });
+  }
+
+  async obtenerFactura(id: number): Promise<FacturaEdicionDTO> {
+    return this.solicitar<FacturaEdicionDTO>(`${this.baseUrl}/${id}`);
+  }
+
+  async actualizarFactura(id: number, factura: FacturaRequestDTO): Promise<FacturaReporteDTO> {
+    return this.solicitar<FacturaReporteDTO>(`${this.baseUrl}/${id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(factura),
     });

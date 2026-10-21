@@ -16,6 +16,7 @@ let catalogos: CatalogosDTO;
 let items: ItemFormulario[] = [];
 let siguienteUid = 1;
 let siguienteSelectorId = 1;
+let facturaEditandoId: number | null = null;
 
 const buscarFormulario = document.querySelector<HTMLFormElement>("#filtros-form")!;
 const altaFormulario = document.querySelector<HTMLFormElement>("#factura-form")!;
@@ -28,12 +29,15 @@ const aviso = document.querySelector<HTMLElement>("#aviso")!;
 const seccionAlta = document.querySelector<HTMLElement>("#seccion-alta")!;
 const mostrarFactura = document.querySelector<HTMLButtonElement>("#mostrar-factura")!;
 const cerrarFactura = document.querySelector<HTMLButtonElement>("#cerrar-factura")!;
+const tituloAlta = document.querySelector<HTMLElement>("#titulo-alta")!;
 const modalConfirmacion = document.querySelector<HTMLDialogElement>("#modal-confirmacion")!;
 const modalTipo = document.querySelector<HTMLElement>("#modal-tipo")!;
 const modalTitulo = document.querySelector<HTMLElement>("#modal-titulo")!;
 const modalDescripcion = document.querySelector<HTMLElement>("#modal-descripcion")!;
 const modalCancelar = document.querySelector<HTMLButtonElement>("#modal-cancelar")!;
 const modalConfirmar = document.querySelector<HTMLButtonElement>("#modal-confirmar")!;
+const modalIcono = document.querySelector<HTMLElement>("#modal-icono")!;
+const modalIconoGrafico = document.querySelector<HTMLElement>("#modal-icono-grafico")!;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 
 function elemento<T extends HTMLElement>(id: string): T {
@@ -117,8 +121,12 @@ function pedirConfirmacion(datos: DatosConfirmacion): Promise<boolean> {
   modalTipo.textContent = datos.tipo;
   modalTitulo.textContent = datos.titulo;
   modalDescripcion.textContent = datos.descripcion;
-  modalConfirmar.textContent = datos.etiquetaConfirmar;
+  modalConfirmar.innerHTML = datos.accion === "eliminar"
+    ? `<span class="icono-basura" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`
+    : `<span class="icono-anular" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`;
   modalConfirmar.dataset.accion = datos.accion;
+  modalIcono.dataset.accion = datos.accion;
+  modalIconoGrafico.className = datos.accion === "eliminar" ? "icono-basura" : "icono-anular";
   document.body.classList.add("modal-abierto");
   modalConfirmacion.showModal();
   modalCancelar.focus();
@@ -267,6 +275,45 @@ function cargarSelectores(): void {
   personalizarSelectores(altaFormulario);
 }
 
+function reiniciarFormularioFactura(): void {
+  facturaEditandoId = null;
+  tituloAlta.textContent = "Nueva factura";
+  elemento<HTMLButtonElement>("guardar-factura").textContent = "Emitir factura";
+  altaFormulario.reset();
+  elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
+  items = [];
+  agregarItem();
+  personalizarSelectores(altaFormulario);
+}
+
+async function cargarFacturaParaEditar(id: number): Promise<void> {
+  try {
+    const factura = await servicio.obtenerFactura(id);
+    if (factura.estado === "ANULADA") {
+      notificar("Las facturas anuladas se conservan como registro y no pueden editarse.", "error");
+      return;
+    }
+
+    facturaEditandoId = factura.id;
+    tituloAlta.textContent = `Editar factura #${factura.numeroFactura}`;
+    elemento<HTMLInputElement>("numero-factura").value = String(factura.numeroFactura);
+    elemento<HTMLInputElement>("fecha-emision").value = factura.fechaEmision;
+    elemento<HTMLSelectElement>("cliente-id").value = String(factura.clienteId);
+    elemento<HTMLSelectElement>("condicion-iva-id").value = String(factura.condicionIvaId);
+    elemento<HTMLSelectElement>("punto-venta-id").value = String(factura.puntoVentaId);
+    elemento<HTMLSelectElement>("tipo-moneda-id").value = String(factura.tipoMonedaId);
+    elemento<HTMLSelectElement>("estado-factura").value = factura.estado;
+    elemento<HTMLInputElement>("observaciones").value = factura.observaciones ?? "";
+    items = factura.detalles.map((detalle) => ({ ...detalle, uid: siguienteUid++ }));
+    renderizarDetalles();
+    personalizarSelectores(altaFormulario);
+    elemento<HTMLButtonElement>("guardar-factura").textContent = "Guardar cambios";
+    abrirFormularioFactura();
+  } catch (error) {
+    notificar((error as Error).message, "error");
+  }
+}
+
 function articuloPorId(id: number): ArticuloCatalogoDTO | undefined {
   return catalogos.articulos.find((articulo) => articulo.id === id);
 }
@@ -372,6 +419,9 @@ function renderizarFacturas(facturas: FacturaReporteDTO[]): void {
       <td class="numero destacado">${dinero(factura.importeTotal)}</td>
       <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
       <td class="acciones">
+        <button class="boton-tabla editar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Editar los datos de la factura" ${factura.estado === "ANULADA" ? "disabled" : ""}>
+          <span class="icono-editar" aria-hidden="true"></span><span>Editar</span>
+        </button>
         <button class="boton-tabla anular" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Conserva la factura y la marca como anulada" ${factura.estado === "ANULADA" ? "disabled" : ""}>Anular</button>
         <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Borra la factura de forma permanente">
           <span class="icono-basura" aria-hidden="true"></span><span>Eliminar</span>
@@ -391,7 +441,7 @@ async function cargarFacturas(): Promise<void> {
   }
 }
 
-async function crearFactura(evento: SubmitEvent): Promise<void> {
+async function guardarFactura(evento: SubmitEvent): Promise<void> {
   evento.preventDefault();
   if (items.length === 0) {
     notificar("Agregá al menos un artículo a la factura.", "error");
@@ -416,13 +466,13 @@ async function crearFactura(evento: SubmitEvent): Promise<void> {
   boton.disabled = true;
   boton.textContent = "Guardando…";
   try {
-    const creada = await servicio.crearFactura(request);
-    notificar(`Factura #${creada.numeroFactura} creada correctamente.`);
-    altaFormulario.reset();
-    elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
-    items = [];
-    agregarItem();
-    personalizarSelectores(altaFormulario);
+    const guardada = facturaEditandoId === null
+      ? await servicio.crearFactura(request)
+      : await servicio.actualizarFactura(facturaEditandoId, request);
+    notificar(facturaEditandoId === null
+      ? `Factura #${guardada.numeroFactura} creada correctamente.`
+      : `Factura #${guardada.numeroFactura} actualizada correctamente.`);
+    reiniciarFormularioFactura();
     await cargarFacturas();
     ocultarFormularioFactura(false);
     mostrarFactura.focus();
@@ -430,7 +480,7 @@ async function crearFactura(evento: SubmitEvent): Promise<void> {
     notificar((error as Error).message, "error");
   } finally {
     boton.disabled = false;
-    boton.textContent = "Emitir factura";
+    boton.textContent = facturaEditandoId === null ? "Emitir factura" : "Guardar cambios";
   }
 }
 
@@ -441,7 +491,10 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
   const numero = boton.dataset.numero ?? "";
 
   try {
-    if (boton.classList.contains("anular")) {
+    if (boton.classList.contains("editar")) {
+      await cargarFacturaParaEditar(id);
+      return;
+    } else if (boton.classList.contains("anular")) {
       const confirmada = await pedirConfirmacion({
         tipo: "Anular comprobante",
         titulo: `¿Anular la factura #${numero}?`,
@@ -471,7 +524,10 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
 }
 
 function enlazarEventos(): void {
-  mostrarFactura.addEventListener("click", abrirFormularioFactura);
+  mostrarFactura.addEventListener("click", () => {
+    reiniciarFormularioFactura();
+    abrirFormularioFactura();
+  });
   cerrarFactura.addEventListener("click", () => ocultarFormularioFactura());
   buscarFormulario.addEventListener("submit", (evento) => {
     evento.preventDefault();
@@ -492,7 +548,7 @@ function enlazarEventos(): void {
     items = items.filter((item) => item.uid !== Number(fila.dataset.uid));
     renderizarDetalles();
   });
-  altaFormulario.addEventListener("submit", (evento) => void crearFactura(evento));
+  altaFormulario.addEventListener("submit", (evento) => void guardarFactura(evento));
   facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
   modalCancelar.addEventListener("click", () => cerrarConfirmacion(false));
   modalConfirmar.addEventListener("click", () => cerrarConfirmacion(true));

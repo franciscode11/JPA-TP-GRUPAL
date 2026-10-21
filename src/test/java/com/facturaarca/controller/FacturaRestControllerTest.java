@@ -1,5 +1,7 @@
 package com.facturaarca.controller;
 
+import com.facturaarca.dto.FacturaDetalleRequestDTO;
+import com.facturaarca.dto.FacturaEdicionDTO;
 import com.facturaarca.dto.FacturaReporteDTO;
 import com.facturaarca.service.FacturaReporteExportService;
 import com.facturaarca.service.FacturaService;
@@ -85,6 +87,21 @@ class FacturaRestControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/facturas/7"))
                 .andExpect(jsonPath("$.estado").value("EMITIDA"));
+    }
+
+    @Test
+    void devuelveTodosLosDatosNecesariosParaEditar() throws Exception {
+        FacturaEdicionDTO factura = new FacturaEdicionDTO(
+                7L, 1001L, fecha(2026, 3, 15), 2L, 5L, 1L, 1L,
+                "EMITIDA", "Entrega acordada", List.of(new FacturaDetalleRequestDTO(9L, 2d, 10d))
+        );
+        when(facturaService.obtenerParaEdicion(7L)).thenReturn(factura);
+
+        mockMvc.perform(get("/api/facturas/7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.numeroFactura").value(1001))
+                .andExpect(jsonPath("$.clienteId").value(2))
+                .andExpect(jsonPath("$.detalles[0].articuloId").value(9));
     }
 
     @Test

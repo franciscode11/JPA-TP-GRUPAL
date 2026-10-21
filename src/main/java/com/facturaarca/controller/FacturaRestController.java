@@ -1,6 +1,7 @@
 package com.facturaarca.controller;
 
 import com.facturaarca.dto.FacturaReporteDTO;
+import com.facturaarca.dto.FacturaEdicionDTO;
 import com.facturaarca.dto.FacturaRequestDTO;
 import com.facturaarca.service.FacturaReporteExportService;
 import com.facturaarca.service.FacturaService;
@@ -55,6 +56,11 @@ public class FacturaRestController {
     public ResponseEntity<FacturaReporteDTO> crearFactura(@RequestBody FacturaRequestDTO request) {
         FacturaReporteDTO creada = facturaService.crear(request);
         return ResponseEntity.created(URI.create("/api/facturas/" + creada.getId())).body(creada);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<FacturaEdicionDTO> obtenerFactura(@PathVariable Long id) {
+        return ResponseEntity.ok(facturaService.obtenerParaEdicion(id));
     }
 
     @PutMapping("/{id}")

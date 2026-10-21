@@ -29,6 +29,18 @@ export interface FacturaReporteDTO {
   observaciones: string | null;
 }
 
+export interface FacturaEdicionDTO extends FacturaRequestDTO {
+  id: number;
+  numeroFactura: number;
+  fechaEmision: string;
+  clienteId: number;
+  condicionIvaId: number;
+  puntoVentaId: number;
+  tipoMonedaId: number;
+  estado: string;
+  detalles: FacturaDetalleRequestDTO[];
+}
+
 export interface FacturaFiltrosDTO {
   fechaDesde?: string;
   fechaHasta?: string;

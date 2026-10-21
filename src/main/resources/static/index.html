@@ -4,15 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Panel de gestión de facturas de venta">
-  <title>Factura ARCA · Gestión de comprobantes</title>
+  <title>Sistema de facturación</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
   <div class="barra-superior"></div>
   <header class="encabezado">
     <div>
-      <p class="eyebrow">Sistema de facturación</p>
-      <h1>Comprobantes de venta</h1>
+      <h1>Sistema de facturación</h1>
       <p class="bajada">Alta, consulta y administración de facturas desde un único panel.</p>
     </div>
     <button id="mostrar-factura" class="boton primario boton-nueva" type="button" aria-controls="seccion-alta" aria-expanded="false">+ Nueva factura</button>
@@ -35,7 +34,7 @@
         <label>Monto mínimo<input id="filtro-monto" class="control" type="number" min="0" step="0.01" placeholder="0,00"></label>
         <div class="botonera-filtros">
           <button class="boton secundario" id="limpiar-filtros" type="button">Limpiar</button>
-          <button class="boton primario" type="submit">Buscar</button>
+          <button class="boton primario boton-buscar" type="submit"><span class="icono-lupa" aria-hidden="true"></span>Buscar</button>
         </div>
       </form>
       <div class="descargas">
@@ -86,7 +85,10 @@
 
     <section class="panel" aria-labelledby="titulo-listado">
       <div class="titulo-seccion">
-        <div><h2 id="titulo-listado">Comprobantes registrados</h2></div>
+        <div class="encabezado-listado">
+          <h2 id="titulo-listado">Comprobantes registrados</h2>
+          <span class="ayuda-acciones">Editar modifica los datos. Anular conserva el comprobante en el historial sin borrarlo.</span>
+        </div>
         <span id="estado-carga" class="cargando">Actualizando…</span>
       </div>
       <div class="tabla-contenedor">
@@ -100,6 +102,7 @@
 
   <dialog id="modal-confirmacion" class="modal-confirmacion" aria-labelledby="modal-titulo" aria-describedby="modal-descripcion">
     <div class="modal-contenido">
+      <div id="modal-icono" class="modal-icono" aria-hidden="true"><span id="modal-icono-grafico"></span></div>
       <p id="modal-tipo" class="modal-tipo">Confirmar acción</p>
       <h2 id="modal-titulo">¿Confirmás esta acción?</h2>
       <p id="modal-descripcion"></p>

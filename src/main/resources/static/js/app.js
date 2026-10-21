@@ -4,6 +4,7 @@ let catalogos;
 let items = [];
 let siguienteUid = 1;
 let siguienteSelectorId = 1;
+let facturaEditandoId = null;
 const buscarFormulario = document.querySelector("#filtros-form");
 const altaFormulario = document.querySelector("#factura-form");
 const detalleCuerpo = document.querySelector("#detalle-body");
@@ -15,12 +16,15 @@ const aviso = document.querySelector("#aviso");
 const seccionAlta = document.querySelector("#seccion-alta");
 const mostrarFactura = document.querySelector("#mostrar-factura");
 const cerrarFactura = document.querySelector("#cerrar-factura");
+const tituloAlta = document.querySelector("#titulo-alta");
 const modalConfirmacion = document.querySelector("#modal-confirmacion");
 const modalTipo = document.querySelector("#modal-tipo");
 const modalTitulo = document.querySelector("#modal-titulo");
 const modalDescripcion = document.querySelector("#modal-descripcion");
 const modalCancelar = document.querySelector("#modal-cancelar");
 const modalConfirmar = document.querySelector("#modal-confirmar");
+const modalIcono = document.querySelector("#modal-icono");
+const modalIconoGrafico = document.querySelector("#modal-icono-grafico");
 let resolverConfirmacion;
 function elemento(id) {
     return document.querySelector(`#${id}`);
@@ -87,8 +91,12 @@ function pedirConfirmacion(datos) {
     modalTipo.textContent = datos.tipo;
     modalTitulo.textContent = datos.titulo;
     modalDescripcion.textContent = datos.descripcion;
-    modalConfirmar.textContent = datos.etiquetaConfirmar;
+    modalConfirmar.innerHTML = datos.accion === "eliminar"
+        ? `<span class="icono-basura" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`
+        : `<span class="icono-anular" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`;
     modalConfirmar.dataset.accion = datos.accion;
+    modalIcono.dataset.accion = datos.accion;
+    modalIconoGrafico.className = datos.accion === "eliminar" ? "icono-basura" : "icono-anular";
     document.body.classList.add("modal-abierto");
     modalConfirmacion.showModal();
     modalCancelar.focus();
@@ -228,6 +236,43 @@ function cargarSelectores() {
     elemento("tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
     personalizarSelectores(altaFormulario);
 }
+function reiniciarFormularioFactura() {
+    facturaEditandoId = null;
+    tituloAlta.textContent = "Nueva factura";
+    elemento("guardar-factura").textContent = "Emitir factura";
+    altaFormulario.reset();
+    elemento("fecha-emision").valueAsDate = new Date();
+    items = [];
+    agregarItem();
+    personalizarSelectores(altaFormulario);
+}
+async function cargarFacturaParaEditar(id) {
+    try {
+        const factura = await servicio.obtenerFactura(id);
+        if (factura.estado === "ANULADA") {
+            notificar("Las facturas anuladas se conservan como registro y no pueden editarse.", "error");
+            return;
+        }
+        facturaEditandoId = factura.id;
+        tituloAlta.textContent = `Editar factura #${factura.numeroFactura}`;
+        elemento("numero-factura").value = String(factura.numeroFactura);
+        elemento("fecha-emision").value = factura.fechaEmision;
+        elemento("cliente-id").value = String(factura.clienteId);
+        elemento("condicion-iva-id").value = String(factura.condicionIvaId);
+        elemento("punto-venta-id").value = String(factura.puntoVentaId);
+        elemento("tipo-moneda-id").value = String(factura.tipoMonedaId);
+        elemento("estado-factura").value = factura.estado;
+        elemento("observaciones").value = factura.observaciones ?? "";
+        items = factura.detalles.map((detalle) => ({ ...detalle, uid: siguienteUid++ }));
+        renderizarDetalles();
+        personalizarSelectores(altaFormulario);
+        elemento("guardar-factura").textContent = "Guardar cambios";
+        abrirFormularioFactura();
+    }
+    catch (error) {
+        notificar(error.message, "error");
+    }
+}
 function articuloPorId(id) {
     return catalogos.articulos.find((articulo) => articulo.id === id);
 }
@@ -333,6 +378,9 @@ function renderizarFacturas(facturas) {
       <td class="numero destacado">${dinero(factura.importeTotal)}</td>
       <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
       <td class="acciones">
+        <button class="boton-tabla editar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Editar los datos de la factura" ${factura.estado === "ANULADA" ? "disabled" : ""}>
+          <span class="icono-editar" aria-hidden="true"></span><span>Editar</span>
+        </button>
         <button class="boton-tabla anular" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Conserva la factura y la marca como anulada" ${factura.estado === "ANULADA" ? "disabled" : ""}>Anular</button>
         <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Borra la factura de forma permanente">
           <span class="icono-basura" aria-hidden="true"></span><span>Eliminar</span>
@@ -352,7 +400,7 @@ async function cargarFacturas() {
         estadoCarga.classList.remove("visible");
     }
 }
-async function crearFactura(evento) {
+async function guardarFactura(evento) {
     evento.preventDefault();
     if (items.length === 0) {
         notificar("Agregá al menos un artículo a la factura.", "error");
@@ -375,13 +423,13 @@ async function crearFactura(evento) {
     boton.disabled = true;
     boton.textContent = "Guardando…";
     try {
-        const creada = await servicio.crearFactura(request);
-        notificar(`Factura #${creada.numeroFactura} creada correctamente.`);
-        altaFormulario.reset();
-        elemento("fecha-emision").valueAsDate = new Date();
-        items = [];
-        agregarItem();
-        personalizarSelectores(altaFormulario);
+        const guardada = facturaEditandoId === null
+            ? await servicio.crearFactura(request)
+            : await servicio.actualizarFactura(facturaEditandoId, request);
+        notificar(facturaEditandoId === null
+            ? `Factura #${guardada.numeroFactura} creada correctamente.`
+            : `Factura #${guardada.numeroFactura} actualizada correctamente.`);
+        reiniciarFormularioFactura();
         await cargarFacturas();
         ocultarFormularioFactura(false);
         mostrarFactura.focus();
@@ -391,7 +439,7 @@ async function crearFactura(evento) {
     }
     finally {
         boton.disabled = false;
-        boton.textContent = "Emitir factura";
+        boton.textContent = facturaEditandoId === null ? "Emitir factura" : "Guardar cambios";
     }
 }
 async function accionFactura(evento) {
@@ -401,7 +449,11 @@ async function accionFactura(evento) {
     const id = Number(boton.dataset.id);
     const numero = boton.dataset.numero ?? "";
     try {
-        if (boton.classList.contains("anular")) {
+        if (boton.classList.contains("editar")) {
+            await cargarFacturaParaEditar(id);
+            return;
+        }
+        else if (boton.classList.contains("anular")) {
             const confirmada = await pedirConfirmacion({
                 tipo: "Anular comprobante",
                 titulo: `¿Anular la factura #${numero}?`,
@@ -434,7 +486,10 @@ async function accionFactura(evento) {
     }
 }
 function enlazarEventos() {
-    mostrarFactura.addEventListener("click", abrirFormularioFactura);
+    mostrarFactura.addEventListener("click", () => {
+        reiniciarFormularioFactura();
+        abrirFormularioFactura();
+    });
     cerrarFactura.addEventListener("click", () => ocultarFormularioFactura());
     buscarFormulario.addEventListener("submit", (evento) => {
         evento.preventDefault();
@@ -456,7 +511,7 @@ function enlazarEventos() {
         items = items.filter((item) => item.uid !== Number(fila.dataset.uid));
         renderizarDetalles();
     });
-    altaFormulario.addEventListener("submit", (evento) => void crearFactura(evento));
+    altaFormulario.addEventListener("submit", (evento) => void guardarFactura(evento));
     facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
     modalCancelar.addEventListener("click", () => cerrarConfirmacion(false));
     modalConfirmar.addEventListener("click", () => cerrarConfirmacion(true));

@@ -19,6 +19,16 @@ export class FacturaService {
             body: JSON.stringify(factura),
         });
     }
+    async obtenerFactura(id) {
+        return this.solicitar(`${this.baseUrl}/${id}`);
+    }
+    async actualizarFactura(id, factura) {
+        return this.solicitar(`${this.baseUrl}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(factura),
+        });
+    }
     async actualizarEstado(id, estado, observaciones) {
         return this.solicitar(`${this.baseUrl}/${id}`, {
             method: "PUT",

@@ -65,7 +65,7 @@ public class CatalogoService {
                                 punto.getNumero() + " - " + limpiarSufijoCarga(punto.getDescripcion())
                         ))
                         .toList(),
-                opcion -> normalizar(opcion.nombre())
+                opcion -> normalizar(opcion.nombre()).replaceFirst("\\s*-.*$", "")
         );
 
         List<CatalogosDTO.OpcionCatalogoDTO> monedas = unicos(
