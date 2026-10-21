@@ -3,6 +3,7 @@ const servicio = new FacturaService();
 let catalogos;
 let items = [];
 let siguienteUid = 1;
+let siguienteSelectorId = 1;
 const buscarFormulario = document.querySelector("#filtros-form");
 const altaFormulario = document.querySelector("#factura-form");
 const detalleCuerpo = document.querySelector("#detalle-body");
@@ -37,11 +38,126 @@ function notificar(mensaje, tipo = "exito") {
 function opciones(datos) {
     return datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
+function cerrarSelectores(excepto) {
+    document.querySelectorAll(".selector-personalizado.abierto").forEach((selector) => {
+        if (selector === excepto)
+            return;
+        selector.classList.remove("abierto");
+        selector.querySelector(".selector-trigger")?.setAttribute("aria-expanded", "false");
+        const menu = selector.querySelector(".selector-menu");
+        if (menu)
+            menu.hidden = true;
+    });
+}
+function posicionarMenu(trigger, menu) {
+    const rectangulo = trigger.getBoundingClientRect();
+    const margen = 8;
+    const altoMenu = Math.min(menu.scrollHeight, 280);
+    const abreHaciaArriba = window.innerHeight - rectangulo.bottom < altoMenu + margen
+        && rectangulo.top > altoMenu;
+    menu.style.left = `${Math.max(margen, rectangulo.left)}px`;
+    menu.style.width = `${rectangulo.width}px`;
+    menu.style.top = abreHaciaArriba
+        ? `${Math.max(margen, rectangulo.top - altoMenu - 6)}px`
+        : `${rectangulo.bottom + 6}px`;
+}
+function actualizarSelector(select, selector) {
+    const trigger = selector.querySelector(".selector-trigger");
+    const texto = trigger.querySelector(".selector-valor");
+    const menu = selector.querySelector(".selector-menu");
+    const seleccionada = select.selectedOptions[0];
+    texto.textContent = seleccionada?.textContent?.trim() || "Seleccionar";
+    trigger.disabled = select.disabled;
+    menu.innerHTML = "";
+    Array.from(select.options).forEach((opcion) => {
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "selector-opcion";
+        boton.setAttribute("role", "option");
+        boton.textContent = opcion.textContent?.trim() || "";
+        boton.dataset.value = opcion.value;
+        boton.setAttribute("aria-selected", String(opcion.selected));
+        boton.disabled = opcion.disabled;
+        boton.addEventListener("click", () => {
+            select.value = opcion.value;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            cerrarSelectores();
+            if (select.isConnected)
+                actualizarSelector(select, selector);
+        });
+        menu.append(boton);
+    });
+}
+function personalizarSelector(select) {
+    const existente = select.closest(".selector-personalizado");
+    if (existente) {
+        actualizarSelector(select, existente);
+        return;
+    }
+    const selector = document.createElement("div");
+    selector.className = "selector-personalizado";
+    select.before(selector);
+    selector.append(select);
+    select.classList.add("select-nativo");
+    select.hidden = true;
+    select.tabIndex = -1;
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "selector-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    const etiqueta = select.closest("label")?.childNodes[0]?.textContent?.trim();
+    trigger.setAttribute("aria-label", select.getAttribute("aria-label") || etiqueta || "Seleccionar opción");
+    const texto = document.createElement("span");
+    texto.className = "selector-valor";
+    trigger.append(texto);
+    const menu = document.createElement("div");
+    menu.className = "selector-menu";
+    menu.id = `selector-menu-${siguienteSelectorId++}`;
+    menu.setAttribute("role", "listbox");
+    menu.hidden = true;
+    trigger.setAttribute("aria-controls", menu.id);
+    selector.append(trigger, menu);
+    trigger.addEventListener("click", () => {
+        const abrir = !selector.classList.contains("abierto");
+        cerrarSelectores(selector);
+        selector.classList.toggle("abierto", abrir);
+        trigger.setAttribute("aria-expanded", String(abrir));
+        menu.hidden = !abrir;
+        if (abrir)
+            posicionarMenu(trigger, menu);
+    });
+    trigger.addEventListener("keydown", (evento) => {
+        if (evento.key === "Escape")
+            cerrarSelectores();
+        if ((evento.key === "ArrowDown" || evento.key === "Enter" || evento.key === " ")
+            && !selector.classList.contains("abierto")) {
+            evento.preventDefault();
+            trigger.click();
+            menu.querySelector(".selector-opcion:not(:disabled)")?.focus();
+        }
+    });
+    select.addEventListener("change", () => {
+        if (select.isConnected)
+            actualizarSelector(select, selector);
+    });
+    select.closest("label")?.addEventListener("click", (evento) => {
+        if (evento.target.closest(".selector-personalizado"))
+            return;
+        evento.preventDefault();
+        trigger.focus();
+    });
+    actualizarSelector(select, selector);
+}
+function personalizarSelectores(raiz = document) {
+    raiz.querySelectorAll("select.control").forEach(personalizarSelector);
+}
 function cargarSelectores() {
     elemento("cliente-id").innerHTML = opciones(catalogos.clientes);
     elemento("condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
     elemento("punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
     elemento("tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
+    personalizarSelectores(altaFormulario);
 }
 function articuloPorId(id) {
     return catalogos.articulos.find((articulo) => articulo.id === id);
@@ -76,6 +192,7 @@ function renderizarDetalles() {
       </tr>`;
     }).join("");
     totalVista.textContent = dinero(items.reduce((total, item) => total + subtotal(item), 0));
+    personalizarSelectores(detalleCuerpo);
 }
 function agregarItem() {
     const primerArticulo = catalogos.articulos[0];
@@ -101,6 +218,26 @@ function sincronizarItem(evento) {
     if (control.classList.contains("item-bonificacion"))
         item.porcentajeBonificacion = Number(control.value);
     renderizarDetalles();
+}
+function actualizarNumerosItem(evento) {
+    const control = evento.target;
+    if (!control.classList.contains("item-cantidad")
+        && !control.classList.contains("item-bonificacion"))
+        return;
+    const fila = control.closest("tr[data-uid]");
+    if (!fila)
+        return;
+    const item = items.find((actual) => actual.uid === Number(fila.dataset.uid));
+    if (!item)
+        return;
+    if (control.classList.contains("item-cantidad"))
+        item.cantidad = Number(control.value);
+    if (control.classList.contains("item-bonificacion"))
+        item.porcentajeBonificacion = Number(control.value);
+    const celdaSubtotal = fila.querySelector("td:nth-child(5)");
+    if (celdaSubtotal)
+        celdaSubtotal.textContent = dinero(subtotal(item));
+    totalVista.textContent = dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
 }
 function filtrosActuales() {
     const monto = valor("filtro-monto");
@@ -173,6 +310,7 @@ async function crearFactura(evento) {
         elemento("fecha-emision").valueAsDate = new Date();
         items = [];
         agregarItem();
+        personalizarSelectores(altaFormulario);
         await cargarFacturas();
     }
     catch (error) {
@@ -214,9 +352,11 @@ function enlazarEventos() {
     });
     elemento("limpiar-filtros").addEventListener("click", () => {
         buscarFormulario.reset();
+        personalizarSelectores(buscarFormulario);
         void cargarFacturas();
     });
     elemento("agregar-item").addEventListener("click", agregarItem);
+    detalleCuerpo.addEventListener("input", actualizarNumerosItem);
     detalleCuerpo.addEventListener("change", sincronizarItem);
     detalleCuerpo.addEventListener("click", (evento) => {
         const boton = evento.target.closest(".eliminar-item");
@@ -228,10 +368,16 @@ function enlazarEventos() {
     });
     altaFormulario.addEventListener("submit", (evento) => void crearFactura(evento));
     facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
+    document.addEventListener("click", (evento) => {
+        if (!evento.target.closest(".selector-personalizado"))
+            cerrarSelectores();
+    });
+    window.addEventListener("resize", () => cerrarSelectores());
 }
 async function iniciar() {
     elemento("fecha-emision").valueAsDate = new Date();
     enlazarEventos();
+    personalizarSelectores(buscarFormulario);
     try {
         catalogos = await servicio.obtenerCatalogos();
         cargarSelectores();

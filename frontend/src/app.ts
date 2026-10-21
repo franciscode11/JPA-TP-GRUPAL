@@ -15,6 +15,7 @@ const servicio = new FacturaService();
 let catalogos: CatalogosDTO;
 let items: ItemFormulario[] = [];
 let siguienteUid = 1;
+let siguienteSelectorId = 1;
 
 const buscarFormulario = document.querySelector<HTMLFormElement>("#filtros-form")!;
 const altaFormulario = document.querySelector<HTMLFormElement>("#factura-form")!;
@@ -57,11 +58,131 @@ function opciones(datos: OpcionCatalogoDTO[]): string {
   return datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 
+function cerrarSelectores(excepto?: HTMLElement): void {
+  document.querySelectorAll<HTMLElement>(".selector-personalizado.abierto").forEach((selector) => {
+    if (selector === excepto) return;
+    selector.classList.remove("abierto");
+    selector.querySelector<HTMLButtonElement>(".selector-trigger")?.setAttribute("aria-expanded", "false");
+    const menu = selector.querySelector<HTMLElement>(".selector-menu");
+    if (menu) menu.hidden = true;
+  });
+}
+
+function posicionarMenu(trigger: HTMLButtonElement, menu: HTMLElement): void {
+  const rectangulo = trigger.getBoundingClientRect();
+  const margen = 8;
+  const altoMenu = Math.min(menu.scrollHeight, 280);
+  const abreHaciaArriba = window.innerHeight - rectangulo.bottom < altoMenu + margen
+    && rectangulo.top > altoMenu;
+
+  menu.style.left = `${Math.max(margen, rectangulo.left)}px`;
+  menu.style.width = `${rectangulo.width}px`;
+  menu.style.top = abreHaciaArriba
+    ? `${Math.max(margen, rectangulo.top - altoMenu - 6)}px`
+    : `${rectangulo.bottom + 6}px`;
+}
+
+function actualizarSelector(select: HTMLSelectElement, selector: HTMLElement): void {
+  const trigger = selector.querySelector<HTMLButtonElement>(".selector-trigger")!;
+  const texto = trigger.querySelector<HTMLElement>(".selector-valor")!;
+  const menu = selector.querySelector<HTMLElement>(".selector-menu")!;
+  const seleccionada = select.selectedOptions[0];
+
+  texto.textContent = seleccionada?.textContent?.trim() || "Seleccionar";
+  trigger.disabled = select.disabled;
+  menu.innerHTML = "";
+
+  Array.from(select.options).forEach((opcion) => {
+    const boton = document.createElement("button");
+    boton.type = "button";
+    boton.className = "selector-opcion";
+    boton.setAttribute("role", "option");
+    boton.textContent = opcion.textContent?.trim() || "";
+    boton.dataset.value = opcion.value;
+    boton.setAttribute("aria-selected", String(opcion.selected));
+    boton.disabled = opcion.disabled;
+    boton.addEventListener("click", () => {
+      select.value = opcion.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      cerrarSelectores();
+      if (select.isConnected) actualizarSelector(select, selector);
+    });
+    menu.append(boton);
+  });
+}
+
+function personalizarSelector(select: HTMLSelectElement): void {
+  const existente = select.closest<HTMLElement>(".selector-personalizado");
+  if (existente) {
+    actualizarSelector(select, existente);
+    return;
+  }
+
+  const selector = document.createElement("div");
+  selector.className = "selector-personalizado";
+  select.before(selector);
+  selector.append(select);
+  select.classList.add("select-nativo");
+  select.hidden = true;
+  select.tabIndex = -1;
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "selector-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  const etiqueta = select.closest("label")?.childNodes[0]?.textContent?.trim();
+  trigger.setAttribute("aria-label", select.getAttribute("aria-label") || etiqueta || "Seleccionar opción");
+  const texto = document.createElement("span");
+  texto.className = "selector-valor";
+  trigger.append(texto);
+
+  const menu = document.createElement("div");
+  menu.className = "selector-menu";
+  menu.id = `selector-menu-${siguienteSelectorId++}`;
+  menu.setAttribute("role", "listbox");
+  menu.hidden = true;
+  trigger.setAttribute("aria-controls", menu.id);
+  selector.append(trigger, menu);
+
+  trigger.addEventListener("click", () => {
+    const abrir = !selector.classList.contains("abierto");
+    cerrarSelectores(selector);
+    selector.classList.toggle("abierto", abrir);
+    trigger.setAttribute("aria-expanded", String(abrir));
+    menu.hidden = !abrir;
+    if (abrir) posicionarMenu(trigger, menu);
+  });
+  trigger.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape") cerrarSelectores();
+    if ((evento.key === "ArrowDown" || evento.key === "Enter" || evento.key === " ")
+        && !selector.classList.contains("abierto")) {
+      evento.preventDefault();
+      trigger.click();
+      menu.querySelector<HTMLButtonElement>(".selector-opcion:not(:disabled)")?.focus();
+    }
+  });
+  select.addEventListener("change", () => {
+    if (select.isConnected) actualizarSelector(select, selector);
+  });
+  select.closest("label")?.addEventListener("click", (evento) => {
+    if ((evento.target as HTMLElement).closest(".selector-personalizado")) return;
+    evento.preventDefault();
+    trigger.focus();
+  });
+  actualizarSelector(select, selector);
+}
+
+function personalizarSelectores(raiz: ParentNode = document): void {
+  raiz.querySelectorAll<HTMLSelectElement>("select.control").forEach(personalizarSelector);
+}
+
 function cargarSelectores(): void {
   elemento<HTMLSelectElement>("cliente-id").innerHTML = opciones(catalogos.clientes);
   elemento<HTMLSelectElement>("condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
   elemento<HTMLSelectElement>("punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
   elemento<HTMLSelectElement>("tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
+  personalizarSelectores(altaFormulario);
 }
 
 function articuloPorId(id: number): ArticuloCatalogoDTO | undefined {
@@ -100,6 +221,7 @@ function renderizarDetalles(): void {
   }).join("");
 
   totalVista.textContent = dinero(items.reduce((total, item) => total + subtotal(item), 0));
+  personalizarSelectores(detalleCuerpo);
 }
 
 function agregarItem(): void {
@@ -123,6 +245,22 @@ function sincronizarItem(evento: Event): void {
   if (control.classList.contains("item-cantidad")) item.cantidad = Number(control.value);
   if (control.classList.contains("item-bonificacion")) item.porcentajeBonificacion = Number(control.value);
   renderizarDetalles();
+}
+
+function actualizarNumerosItem(evento: Event): void {
+  const control = evento.target as HTMLInputElement;
+  if (!control.classList.contains("item-cantidad")
+      && !control.classList.contains("item-bonificacion")) return;
+  const fila = control.closest<HTMLTableRowElement>("tr[data-uid]");
+  if (!fila) return;
+  const item = items.find((actual) => actual.uid === Number(fila.dataset.uid));
+  if (!item) return;
+
+  if (control.classList.contains("item-cantidad")) item.cantidad = Number(control.value);
+  if (control.classList.contains("item-bonificacion")) item.porcentajeBonificacion = Number(control.value);
+  const celdaSubtotal = fila.querySelector<HTMLElement>("td:nth-child(5)");
+  if (celdaSubtotal) celdaSubtotal.textContent = dinero(subtotal(item));
+  totalVista.textContent = dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
 }
 
 function filtrosActuales(): FacturaFiltrosDTO {
@@ -200,6 +338,7 @@ async function crearFactura(evento: SubmitEvent): Promise<void> {
     elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
     items = [];
     agregarItem();
+    personalizarSelectores(altaFormulario);
     await cargarFacturas();
   } catch (error) {
     notificar((error as Error).message, "error");
@@ -237,9 +376,11 @@ function enlazarEventos(): void {
   });
   elemento<HTMLButtonElement>("limpiar-filtros").addEventListener("click", () => {
     buscarFormulario.reset();
+    personalizarSelectores(buscarFormulario);
     void cargarFacturas();
   });
   elemento<HTMLButtonElement>("agregar-item").addEventListener("click", agregarItem);
+  detalleCuerpo.addEventListener("input", actualizarNumerosItem);
   detalleCuerpo.addEventListener("change", sincronizarItem);
   detalleCuerpo.addEventListener("click", (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(".eliminar-item");
@@ -250,11 +391,16 @@ function enlazarEventos(): void {
   });
   altaFormulario.addEventListener("submit", (evento) => void crearFactura(evento));
   facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
+  document.addEventListener("click", (evento) => {
+    if (!(evento.target as HTMLElement).closest(".selector-personalizado")) cerrarSelectores();
+  });
+  window.addEventListener("resize", () => cerrarSelectores());
 }
 
 async function iniciar(): Promise<void> {
   elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
   enlazarEventos();
+  personalizarSelectores(buscarFormulario);
   try {
     catalogos = await servicio.obtenerCatalogos();
     cargarSelectores();

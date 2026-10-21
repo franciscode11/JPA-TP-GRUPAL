@@ -9,6 +9,11 @@ import com.facturaarca.repository.TipoMonedaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.Function;
+
 @Service
 public class CatalogoService {
 
@@ -34,35 +39,72 @@ public class CatalogoService {
 
     @Transactional(readOnly = true)
     public CatalogosDTO obtenerCatalogos() {
-        return new CatalogosDTO(
+        List<CatalogosDTO.OpcionCatalogoDTO> clientes = unicos(
                 clienteRepository.findAllByOrderByDenominacionAsc().stream()
+                        .filter(cliente -> !normalizar(cliente.getDenominacion()).contains("prueba"))
                         .map(cliente -> new CatalogosDTO.OpcionCatalogoDTO(
-                                cliente.getId(), cliente.getDenominacion()
+                                cliente.getId(), cliente.getDenominacion().trim()
                         ))
                         .toList(),
+                opcion -> normalizar(opcion.nombre())
+        );
+
+        List<CatalogosDTO.OpcionCatalogoDTO> condiciones = unicos(
                 condicionIvaRepository.findAllByOrderByDenominacionAsc().stream()
                         .map(condicion -> new CatalogosDTO.OpcionCatalogoDTO(
-                                condicion.getId(), condicion.getDenominacion()
+                                condicion.getId(), condicion.getDenominacion().trim()
                         ))
                         .toList(),
+                opcion -> normalizar(opcion.nombre())
+        );
+
+        List<CatalogosDTO.OpcionCatalogoDTO> puntosVenta = unicos(
                 puntoVentaRepository.findAllByOrderByNumeroAsc().stream()
                         .map(punto -> new CatalogosDTO.OpcionCatalogoDTO(
-                                punto.getId(), punto.getNumero() + " - " + punto.getDescripcion()
+                                punto.getId(),
+                                punto.getNumero() + " - " + limpiarSufijoCarga(punto.getDescripcion())
                         ))
                         .toList(),
+                opcion -> normalizar(opcion.nombre())
+        );
+
+        List<CatalogosDTO.OpcionCatalogoDTO> monedas = unicos(
                 tipoMonedaRepository.findAllByOrderByDenominacionAsc().stream()
                         .map(moneda -> new CatalogosDTO.OpcionCatalogoDTO(
-                                moneda.getId(), moneda.getDenominacion() + " (" + moneda.getSimbolo() + ")"
+                                moneda.getId(),
+                                moneda.getDenominacion().trim() + " (" + moneda.getSimbolo().trim() + ")"
                         ))
                         .toList(),
+                opcion -> normalizar(opcion.nombre())
+        );
+
+        List<CatalogosDTO.ArticuloCatalogoDTO> articulos = unicos(
                 listaPrecioArticuloRepository.findAllByOrderByArticuloDenominacionAsc().stream()
+                        .filter(precio -> !normalizar(precio.getArticulo().getDenominacion()).contains("sin ventas"))
                         .map(precio -> new CatalogosDTO.ArticuloCatalogoDTO(
                                 precio.getArticulo().getId(),
-                                precio.getArticulo().getCodigo(),
-                                precio.getArticulo().getDenominacion(),
+                                precio.getArticulo().getCodigo().trim(),
+                                precio.getArticulo().getDenominacion().trim(),
                                 precio.getPrecioVenta()
                         ))
-                        .toList()
+                        .toList(),
+                articulo -> normalizar(articulo.codigo())
         );
+
+        return new CatalogosDTO(clientes, condiciones, puntosVenta, monedas, articulos);
+    }
+
+    private static String limpiarSufijoCarga(String texto) {
+        return texto == null ? "" : texto.replaceFirst("(?i)\\s+JPQL$", "").trim();
+    }
+
+    private static String normalizar(String texto) {
+        return texto == null ? "" : texto.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private static <T> List<T> unicos(List<T> elementos, Function<T, String> clave) {
+        LinkedHashMap<String, T> unicos = new LinkedHashMap<>();
+        elementos.forEach(elemento -> unicos.putIfAbsent(clave.apply(elemento), elemento));
+        return List.copyOf(unicos.values());
     }
 }
