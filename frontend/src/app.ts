@@ -29,6 +29,8 @@ const aviso = document.querySelector<HTMLElement>("#aviso")!;
 const seccionAlta = document.querySelector<HTMLElement>("#seccion-alta")!;
 const mostrarFactura = document.querySelector<HTMLButtonElement>("#mostrar-factura")!;
 const cerrarFactura = document.querySelector<HTMLButtonElement>("#cerrar-factura")!;
+const descargarPdf = document.querySelector<HTMLAnchorElement>("#descargar-pdf")!;
+const descargarExcel = document.querySelector<HTMLAnchorElement>("#descargar-excel")!;
 const tituloAlta = document.querySelector<HTMLElement>("#titulo-alta")!;
 const modalConfirmacion = document.querySelector<HTMLDialogElement>("#modal-confirmacion")!;
 const modalTipo = document.querySelector<HTMLElement>("#modal-tipo")!;
@@ -412,6 +414,20 @@ function filtrosActuales(): FacturaFiltrosDTO {
   };
 }
 
+function parametrosFiltros(filtros: FacturaFiltrosDTO): string {
+  const parametros = new URLSearchParams();
+  Object.entries(filtros).forEach(([nombre, dato]) => {
+    if (dato !== undefined && dato !== "") parametros.set(nombre, String(dato));
+  });
+  return parametros.size > 0 ? `?${parametros.toString()}` : "";
+}
+
+function actualizarEnlacesDescarga(filtros: FacturaFiltrosDTO): void {
+  const query = parametrosFiltros(filtros);
+  descargarPdf.href = `/api/facturas/reporte.pdf${query}`;
+  descargarExcel.href = `/api/facturas/reporte.xlsx${query}`;
+}
+
 function renderizarFacturas(facturas: FacturaReporteDTO[]): void {
   contador.textContent = `${facturas.length} ${facturas.length === 1 ? "comprobante" : "comprobantes"}`;
   if (facturas.length === 0) {
@@ -443,7 +459,9 @@ function renderizarFacturas(facturas: FacturaReporteDTO[]): void {
 async function cargarFacturas(): Promise<void> {
   estadoCarga.classList.add("visible");
   try {
-    renderizarFacturas(await servicio.obtenerFacturas(filtrosActuales()));
+    const filtros = filtrosActuales();
+    renderizarFacturas(await servicio.obtenerFacturas(filtros));
+    actualizarEnlacesDescarga(filtros);
   } catch (error) {
     notificar((error as Error).message, "error");
   } finally {

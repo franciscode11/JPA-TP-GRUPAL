@@ -16,6 +16,8 @@ const aviso = document.querySelector("#aviso");
 const seccionAlta = document.querySelector("#seccion-alta");
 const mostrarFactura = document.querySelector("#mostrar-factura");
 const cerrarFactura = document.querySelector("#cerrar-factura");
+const descargarPdf = document.querySelector("#descargar-pdf");
+const descargarExcel = document.querySelector("#descargar-excel");
 const tituloAlta = document.querySelector("#titulo-alta");
 const modalConfirmacion = document.querySelector("#modal-confirmacion");
 const modalTipo = document.querySelector("#modal-tipo");
@@ -371,6 +373,19 @@ function filtrosActuales() {
         montoMinimo: monto ? numero(monto) : undefined,
     };
 }
+function parametrosFiltros(filtros) {
+    const parametros = new URLSearchParams();
+    Object.entries(filtros).forEach(([nombre, dato]) => {
+        if (dato !== undefined && dato !== "")
+            parametros.set(nombre, String(dato));
+    });
+    return parametros.size > 0 ? `?${parametros.toString()}` : "";
+}
+function actualizarEnlacesDescarga(filtros) {
+    const query = parametrosFiltros(filtros);
+    descargarPdf.href = `/api/facturas/reporte.pdf${query}`;
+    descargarExcel.href = `/api/facturas/reporte.xlsx${query}`;
+}
 function renderizarFacturas(facturas) {
     contador.textContent = `${facturas.length} ${facturas.length === 1 ? "comprobante" : "comprobantes"}`;
     if (facturas.length === 0) {
@@ -400,7 +415,9 @@ function renderizarFacturas(facturas) {
 async function cargarFacturas() {
     estadoCarga.classList.add("visible");
     try {
-        renderizarFacturas(await servicio.obtenerFacturas(filtrosActuales()));
+        const filtros = filtrosActuales();
+        renderizarFacturas(await servicio.obtenerFacturas(filtros));
+        actualizarEnlacesDescarga(filtros);
     }
     catch (error) {
         notificar(error.message, "error");
