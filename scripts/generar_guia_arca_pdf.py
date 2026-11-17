@@ -8,9 +8,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    KeepTogether,
-    ListFlowable,
-    ListItem,
     PageBreak,
     Paragraph,
     Preformatted,
@@ -43,8 +40,8 @@ def styles():
             "Title",
             parent=base["Title"],
             fontName="Helvetica-Bold",
-            fontSize=24,
-            leading=28,
+            fontSize=21,
+            leading=24,
             textColor=colors.HexColor("#171717"),
             spaceAfter=12,
         ),
@@ -52,28 +49,31 @@ def styles():
             "H2",
             parent=base["Heading2"],
             fontName="Helvetica-Bold",
-            fontSize=15,
-            leading=19,
+            fontSize=13,
+            leading=16,
             textColor=colors.HexColor("#171717"),
-            spaceBefore=15,
-            spaceAfter=7,
+            spaceBefore=10,
+            spaceAfter=4,
         ),
         "body": ParagraphStyle(
             "Body",
             parent=base["BodyText"],
             fontName="Helvetica",
-            fontSize=9.5,
-            leading=14,
+            fontSize=8.7,
+            leading=11.8,
             textColor=colors.HexColor("#303030"),
-            spaceAfter=7,
+            spaceAfter=5,
         ),
         "list": ParagraphStyle(
             "List",
             parent=base["BodyText"],
             fontName="Helvetica",
-            fontSize=9.3,
-            leading=13.5,
+            fontSize=8.6,
+            leading=11.5,
             textColor=colors.HexColor("#303030"),
+            leftIndent=0,
+            firstLineIndent=0,
+            spaceAfter=3,
         ),
         "code": ParagraphStyle(
             "Code",
@@ -94,8 +94,8 @@ def styles():
             "Cover",
             parent=base["BodyText"],
             fontName="Helvetica",
-            fontSize=11,
-            leading=16,
+            fontSize=9.5,
+            leading=13,
             alignment=TA_CENTER,
             textColor=colors.HexColor("#666663"),
         ),
@@ -119,38 +119,38 @@ def parse_markdown(text: str, style_map) -> list:
         elif line.startswith("# "):
             if first_title:
                 story.extend([
-                    Spacer(1, 44 * mm),
                     Paragraph(inline_markup(line[2:]), style_map["title"]),
-                    Spacer(1, 5 * mm),
                     Paragraph(
-                        "Procedimiento seguro para el trabajo práctico. Ambiente de prueba, sin validez fiscal.",
+                        "Pasos mínimos para que vos hagas la parte de ARCA y yo configure el proyecto.",
                         style_map["cover"],
                     ),
-                    Spacer(1, 70 * mm),
-                    Paragraph("Sistema de facturación", style_map["cover"]),
-                    PageBreak(),
+                    Spacer(1, 7 * mm),
                 ])
                 first_title = False
             else:
                 story.append(Paragraph(inline_markup(line[2:]), style_map["title"]))
         elif line.startswith("## "):
+            if line == "## Paso 4 - Autorizar la facturación":
+                story.append(PageBreak())
             story.append(Paragraph(inline_markup(line[3:]), style_map["h2"]))
         elif re.match(r"^\d+\. ", line):
-            items = []
+            item_number = 1
+            list_lines = []
             while index < len(lines) and re.match(r"^\d+\. ", lines[index]):
                 content = re.sub(r"^\d+\. ", "", lines[index])
-                items.append(ListItem(Paragraph(inline_markup(content), style_map["list"])))
+                list_lines.append(f"{item_number}.&nbsp;&nbsp;{inline_markup(content)}")
+                item_number += 1
                 index += 1
-            story.append(ListFlowable(items, bulletType="1", leftIndent=18, bulletFontSize=8))
-            story.append(Spacer(1, 5))
+            story.append(Paragraph("<br/>".join(list_lines), style_map["list"]))
+            story.append(Spacer(1, 3))
             index -= 1
         elif line.startswith("- "):
-            items = []
+            list_lines = []
             while index < len(lines) and lines[index].startswith("- "):
-                items.append(ListItem(Paragraph(inline_markup(lines[index][2:]), style_map["list"])))
+                list_lines.append(f"&#8226;&nbsp;&nbsp;{inline_markup(lines[index][2:])}")
                 index += 1
-            story.append(ListFlowable(items, bulletType="bullet", leftIndent=18, bulletFontSize=7))
-            story.append(Spacer(1, 5))
+            story.append(Paragraph("<br/>".join(list_lines), style_map["list"]))
+            story.append(Spacer(1, 3))
             index -= 1
         elif line.strip():
             paragraph = [line.strip()]
