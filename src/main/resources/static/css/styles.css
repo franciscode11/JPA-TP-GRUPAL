@@ -248,7 +248,11 @@ textarea.control { min-height: 96px; padding-top: 12px; resize: vertical; line-h
   font-weight: 620;
   text-align: left;
 }
-.selector-opcion:focus-visible { background: var(--surface-soft); outline: 0; }
+.selector-opcion:focus-visible {
+  color: var(--surface);
+  background: var(--ink);
+  outline: 0;
+}
 .selector-opcion[aria-selected="true"] { color: var(--surface); background: var(--ink); }
 .botonera-filtros { display: flex; justify-content: flex-end; gap: 8px; grid-column: 4; }
 .boton {
@@ -441,7 +445,10 @@ textarea.control { min-height: 96px; padding-top: 12px; resize: vertical; line-h
   .fecha-control:hover, .boton.secundario:hover:not(:disabled), .boton-icono:hover { background: var(--surface-soft); }
   .calendario-nav:hover, .calendario-dia:hover:not(.seleccionado) { background: var(--surface-soft); }
   .selector-trigger:hover { background: var(--surface); border-color: #a6a69f; }
-  .selector-opcion:hover { background: var(--surface-soft); }
+  .selector-opcion:hover {
+    color: var(--surface);
+    background: var(--ink);
+  }
   .boton.primario:hover:not(:disabled), .boton-tabla.emitir:hover:not(:disabled) { background: #353533; }
   .boton.peligro:hover:not(:disabled), .boton-tabla.peligro:hover:not(:disabled) { background: var(--danger-hover); border-color: var(--danger-hover); }
   .enlace-descarga:hover { text-decoration: underline; text-underline-offset: 3px; }

@@ -631,8 +631,14 @@ function enlazarEventos() {
         void cargarFacturas();
     });
     elemento("#limpiar-filtros").addEventListener("click", () => {
-        elemento("#filtros-form").reset();
-        personalizarControles(elemento("#filtros-form"));
+        const formulario = elemento("#filtros-form");
+        formulario.reset();
+        formulario.querySelectorAll("input, select")
+            .forEach((control) => {
+            control.value = "";
+            control.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        personalizarControles(formulario);
         paginaFacturas = 0;
         void cargarFacturas();
     });

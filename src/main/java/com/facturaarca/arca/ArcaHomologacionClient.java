@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -86,7 +87,12 @@ public class ArcaHomologacionClient {
         } catch (ArcaException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new ArcaException("No se pudo completar la comunicación con ARCA en homologación", exception);
+            String detalle = exception.getMessage();
+            throw new ArcaException(
+                    "No se pudo completar la comunicación con ARCA en homologación"
+                            + (detalle == null || detalle.isBlank() ? "" : ": " + detalle),
+                    exception
+            );
         }
     }
 
@@ -108,7 +114,9 @@ public class ArcaHomologacionClient {
         String tra = crearTra();
         String cms = firmarTra(tra);
         String respuesta = enviarSoap(config.getWsaaUrl(), "", sobreWsaa(cms));
-        Document documento = parsearXml(respuesta);
+        Document sobreRespuesta = parsearXml(respuesta);
+        String ticketXml = textoOpcional(sobreRespuesta, "loginCmsReturn");
+        Document documento = ticketXml.isBlank() ? sobreRespuesta : parsearXml(ticketXml);
         String token = texto(documento, "token");
         String sign = texto(documento, "sign");
         Instant expiracion = OffsetDateTime.parse(texto(documento, "expirationTime")).toInstant();
@@ -199,12 +207,11 @@ public class ArcaHomologacionClient {
             long numero
     ) throws Exception {
         Importes importes = Importes.desde(factura.getImporteTotal(), tipo);
-        String fecha = factura.getFechaEmision().toInstant()
-                .atZone(java.time.ZoneId.systemDefault()).toLocalDate().format(FECHA_ARCA);
-        String iva = importes.iva() == 0 ? "" : """
+        String fecha = fechaLocal(factura.getFechaEmision()).format(FECHA_ARCA);
+        String iva = importes.iva() == 0 ? "" : String.format(Locale.ROOT, """
                 <ar:Iva><ar:AlicIva><ar:Id>5</ar:Id><ar:BaseImp>%.2f</ar:BaseImp><ar:Importe>%.2f</ar:Importe></ar:AlicIva></ar:Iva>
-                """.formatted(importes.neto(), importes.iva());
-        String cuerpo = """
+                """, importes.neto(), importes.iva());
+        String cuerpo = String.format(Locale.ROOT, """
                 <ar:FECAESolicitar>
                   %s
                   <ar:FeCAEReq>
@@ -219,7 +226,7 @@ public class ArcaHomologacionClient {
                     </ar:FECAEDetRequest></ar:FeDetReq>
                   </ar:FeCAEReq>
                 </ar:FECAESolicitar>
-                """.formatted(
+                """,
                 auth(ticket), puntoVenta, tipo,
                 tipoDocumento(factura), numeroDocumento(factura),
                 numero, numero, fecha,
@@ -250,7 +257,18 @@ public class ArcaHomologacionClient {
         return numeroDocumento(factura) == 0 ? 99 : 80;
     }
 
+    private LocalDate fechaLocal(Date fecha) {
+        if (fecha instanceof java.sql.Date fechaSql) {
+            return fechaSql.toLocalDate();
+        }
+        return fecha.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+
     private long numeroDocumento(FacturaVenta factura) {
+        if (factura.getCondicionIva() != null
+                && factura.getCondicionIva().getCodigoAfip() == 5) {
+            return 0;
+        }
         String documento = factura.getCliente() == null ? "" : factura.getCliente().getCuitCuil();
         String digitos = documento == null ? "" : documento.replaceAll("\\D", "");
         return digitos.length() == 11 ? Long.parseLong(digitos) : 0;
@@ -284,16 +302,23 @@ public class ArcaHomologacionClient {
         HttpRequest.Builder solicitud = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(45))
                 .header("Content-Type", "text/xml; charset=UTF-8")
+                .header("SOAPAction", accion.isBlank() ? "\"\"" : '"' + accion + '"')
                 .POST(HttpRequest.BodyPublishers.ofString(xml, StandardCharsets.UTF_8));
-        if (!accion.isBlank()) {
-            solicitud.header("SOAPAction", '"' + accion + '"');
-        }
         HttpResponse<String> respuesta = httpClient.send(
                 solicitud.build(),
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
         );
         if (respuesta.statusCode() >= 400) {
-            throw new ArcaException("ARCA respondió HTTP " + respuesta.statusCode());
+            String detalle = respuesta.body() == null
+                    ? ""
+                    : respuesta.body().replaceAll("\\s+", " ").trim();
+            if (detalle.length() > 800) {
+                detalle = detalle.substring(0, 800);
+            }
+            throw new ArcaException(
+                    "ARCA respondió HTTP " + respuesta.statusCode()
+                            + (detalle.isBlank() ? "" : ": " + detalle)
+            );
         }
         return respuesta.body();
     }

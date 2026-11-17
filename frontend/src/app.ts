@@ -704,8 +704,14 @@ function enlazarEventos(): void {
     void cargarFacturas();
   });
   elemento<HTMLButtonElement>("#limpiar-filtros").addEventListener("click", () => {
-    elemento<HTMLFormElement>("#filtros-form").reset();
-    personalizarControles(elemento("#filtros-form"));
+    const formulario = elemento<HTMLFormElement>("#filtros-form");
+    formulario.reset();
+    formulario.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")
+      .forEach((control) => {
+        control.value = "";
+        control.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    personalizarControles(formulario);
     paginaFacturas = 0;
     void cargarFacturas();
   });
