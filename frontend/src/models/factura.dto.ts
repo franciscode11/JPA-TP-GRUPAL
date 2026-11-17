@@ -27,6 +27,7 @@ export interface FacturaReporteDTO {
   observaciones: string | null;
   cae: string | null;
   resultadoArca: string | null;
+  motivoRechazo: string | null;
 }
 
 export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {

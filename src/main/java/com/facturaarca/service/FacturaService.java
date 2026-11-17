@@ -334,7 +334,8 @@ public class FacturaService {
                 factura.getEstado(),
                 factura.getObservaciones(),
                 factura.getCae(),
-                factura.getResultadoAfip()
+                factura.getResultadoAfip(),
+                factura.getMotivoRechazo()
         );
     }
 

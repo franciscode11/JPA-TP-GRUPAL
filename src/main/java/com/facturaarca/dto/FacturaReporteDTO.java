@@ -28,6 +28,7 @@ public class FacturaReporteDTO {
     private String observaciones;
     private String cae;
     private String resultadoArca;
+    private String motivoRechazo;
 
     public FacturaReporteDTO(
             Long id,
@@ -41,7 +42,8 @@ public class FacturaReporteDTO {
             String estado,
             String observaciones,
             String cae,
-            String resultadoArca
+            String resultadoArca,
+            String motivoRechazo
     ) {
         this.id = id;
         this.numeroFactura = numeroFactura;
@@ -55,6 +57,7 @@ public class FacturaReporteDTO {
         this.observaciones = observaciones;
         this.cae = cae;
         this.resultadoArca = resultadoArca;
+        this.motivoRechazo = motivoRechazo;
     }
 
     public FacturaReporteDTO(
@@ -72,7 +75,7 @@ public class FacturaReporteDTO {
         this(
                 id, numeroFactura, fechaEmision, clienteDenominacion, condicionIva,
                 puntoVentaDescripcion, importeTotal, cantidadItems, estado, observaciones,
-                null, null
+                null, null, null
         );
     }
 

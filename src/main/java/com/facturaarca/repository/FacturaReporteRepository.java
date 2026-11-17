@@ -74,7 +74,7 @@ public class FacturaReporteRepository {
                     f.id, f.numero, f.fechaEmision,
                     COALESCE(c.denominacion, 'Consumidor Final'),
                     ci.denominacion, pv.descripcion, f.importeTotal,
-                    COUNT(d), f.estado, f.observaciones, f.cae, f.resultadoAfip
+                    COUNT(d), f.estado, f.observaciones, f.cae, f.resultadoAfip, f.motivoRechazo
                 )
                 FROM FacturaVenta f
                 LEFT JOIN f.cliente c
@@ -85,7 +85,7 @@ public class FacturaReporteRepository {
 
                 GROUP BY f.id, f.numero, f.fechaEmision, c.denominacion,
                          ci.denominacion, pv.descripcion, f.importeTotal,
-                         f.estado, f.observaciones, f.cae, f.resultadoAfip
+                         f.estado, f.observaciones, f.cae, f.resultadoAfip, f.motivoRechazo
                 ORDER BY f.fechaEmision DESC, f.numero DESC, f.id DESC
                 """;
 

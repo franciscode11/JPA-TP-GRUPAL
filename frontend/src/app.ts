@@ -665,7 +665,16 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
       });
       if (!confirmada) return;
       const factura = await servicio.emitirEnArca(id);
-      notificar(`ARCA aprobó la factura. CAE ${factura.cae}.`);
+      if (factura.estado === "EMITIDA" && factura.cae) {
+        notificar(`ARCA aprobó la factura. CAE ${factura.cae}.`);
+      } else {
+        notificar(
+          factura.motivoRechazo
+            ? `ARCA rechazó el comprobante: ${factura.motivoRechazo}`
+            : "ARCA no aprobó el comprobante. Revisá los datos e intentá nuevamente.",
+          "error",
+        );
+      }
     }
     if (boton.classList.contains("eliminar")) {
       const confirmada = await pedirConfirmacion({
