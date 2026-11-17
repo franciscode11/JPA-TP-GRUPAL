@@ -15,8 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 public class FacturaRequestDTO {
 
-    private Long numeroFactura;
-
     @JsonFormat(pattern = "yyyy-MM-dd")
     private Date fechaEmision;
 

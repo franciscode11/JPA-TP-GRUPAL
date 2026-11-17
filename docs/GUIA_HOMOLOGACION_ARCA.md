@@ -1,192 +1,228 @@
-# Guía de alta y homologación ARCA para el TP
+# Guía única: conectar el TP con ARCA en homologación
 
-Actualizada el 17 de noviembre de 2026.
+Actualizada el 17 de noviembre de 2026. Esta guía parte de que ya tienen una cuenta y pueden ingresar a ARCA con Clave Fiscal.
 
-## Qué vamos a hacer
+El procedimiento es exclusivamente para `TESTING/HOMOLOGACIÓN`. Los comprobantes y CAE obtenidos allí son de prueba y no tienen validez fiscal. No cambien las URLs del proyecto por las de producción.
 
-El sistema guarda primero una factura local con estado `PENDIENTE`. Luego, una acción separada solicita autorización a ARCA mediante WSAA y WSFEv1. La factura pasa a `EMITIDA` únicamente cuando ARCA responde con resultado aprobado y entrega un CAE.
+## Datos que deben definir antes de empezar
 
-Todo este procedimiento se realiza en homologación. Los comprobantes obtenidos en este ambiente son de prueba y no tienen validez fiscal.
+Anoten dos CUIT sin guiones:
 
-## Antes de empezar
+- `CUIT_CERTIFICADO`: CUIT de la persona humana que inicia sesión y usa WSASS. El CSR debe llevar exactamente esta CUIT.
+- `CUIT_EMISOR`: CUIT que el sistema representará al pedir el CAE. Puede ser el mismo CUIT o el de la empresa representada.
 
-Necesitan:
+Elijan además el tipo de comprobante de la demostración:
 
-1. Una persona humana con CUIT y Clave Fiscal habilitada.
-2. Acceso al portal de ARCA.
-3. OpenSSL instalado. En macOS y Linux suele estar disponible desde la terminal.
-4. Un lugar privado, fuera del repositorio, para guardar la clave y el certificado.
+- `11` para Factura C, normalmente si el emisor es monotributista o exento.
+- `6` para Factura B.
+- `1` para Factura A.
 
-El WSASS de homologación no es delegable. La adhesión debe hacerla una persona humana ingresando con su propia Clave Fiscal. Luego, desde WSASS, el certificado puede autorizarse para representar al CUIT que corresponda.
+Para el TP conviene probar un único tipo compatible con la condición del emisor. Si no saben cuál corresponde, confírmenlo con el profesor o contador antes de elegirlo.
 
-## Obtener CUIT y Clave Fiscal si todavía no las tienen
+## Paso 1 — Adherir WSASS en ARCA
 
-1. Ingresen a la sección oficial de inscripción de ARCA.
-2. Para una persona humana con DNI argentino, pueden iniciar el alta desde CUIT Digital o desde la aplicación ARCA Móvil.
-3. Completen la validación de identidad, domicilio y datos que solicite ARCA.
-4. Verifiquen que la CUIT esté activa y que puedan ingresar al portal con Clave Fiscal.
-
-Para el TP no hace falta emitir nada en producción. La cuenta real se usa para identificarse y obtener acceso al ambiente de homologación.
-
-## Adherir el servicio WSASS
-
-1. Ingresen al portal de ARCA con CUIT y Clave Fiscal de una persona humana.
+1. Ingresen a ARCA con Clave Fiscal de una persona humana.
 2. Abran `Administrador de Relaciones de Clave Fiscal`.
-3. Elijan la opción para adherir un servicio.
-4. Busquen `WSASS - Autoservicio de Acceso a WebServices (TESTING/HOMOLOGACIÓN)`.
-5. Confirmen la adhesión.
-6. Cierren la sesión y vuelvan a ingresar si el servicio todavía no aparece.
-7. Abran WSASS y confirmen que el encabezado indique `TESTING/HOMOLOGACIÓN`.
+3. Seleccionen la opción para adherir un servicio.
+4. Busquen y adhieran `WSASS - Autoservicio de Acceso a WebServices (TESTING/HOMOLOGACIÓN)`.
+5. Confirmen la relación.
+6. Cierren sesión, vuelvan a ingresar y abran WSASS.
+7. Verifiquen que la pantalla diga `TESTING/HOMOLOGACIÓN`.
 
-## Generar la clave privada y el CSR
+WSASS no es delegable: este paso se hace con la Clave Fiscal de una persona humana.
 
-Creen una carpeta privada fuera del repositorio. En estos ejemplos se usa `~/arca-homologacion`:
+## Paso 2 — Crear la clave privada y el CSR en la Mac
 
-```bash
-mkdir -p ~/arca-homologacion
-chmod 700 ~/arca-homologacion
-cd ~/arca-homologacion
-```
-
-Generen una clave RSA de 2048 bits:
+Abandonen cualquier servidor que esté usando la terminal con `Control + C`. Luego ejecuten este bloque, reemplazando el CUIT de ejemplo por la CUIT de la persona conectada a WSASS:
 
 ```bash
-openssl genrsa -out factura-tp.key 2048
-chmod 600 factura-tp.key
-```
+export CUIT_CERTIFICADO=20123456789
+export ARCA_DIR="$HOME/arca-homologacion-factura"
 
-Generen el CSR. Reemplacen `NOMBRE DEL GRUPO` y `20123456789` por sus datos. La CUIT debe tener 11 dígitos, sin guiones. Debe existir un espacio entre `CUIT` y el número:
+mkdir -p "$ARCA_DIR"
+chmod 700 "$ARCA_DIR"
 
-```bash
+openssl genrsa -out "$ARCA_DIR/factura-arca-homo.key" 2048
+chmod 600 "$ARCA_DIR/factura-arca-homo.key"
+
 openssl req -new \
-  -key factura-tp.key \
-  -subj "/C=AR/O=NOMBRE DEL GRUPO/CN=factura-tp/serialNumber=CUIT 20123456789" \
-  -out factura-tp.csr
+  -key "$ARCA_DIR/factura-arca-homo.key" \
+  -subj "/C=AR/O=TP Facturacion/CN=factura-arca-homo/serialNumber=CUIT ${CUIT_CERTIFICADO}" \
+  -out "$ARCA_DIR/factura-arca-homo.csr"
+
+openssl req \
+  -in "$ARCA_DIR/factura-arca-homo.csr" \
+  -noout -subject -verify
 ```
 
-Revisen el pedido antes de subirlo:
+El último comando debe mostrar `verify OK` y un `serialNumber` con la CUIT correcta. Si no coincide, vuelvan a generar el CSR antes de continuar.
+
+Copien el CSR al portapapeles:
 
 ```bash
-openssl req -in factura-tp.csr -noout -subject -verify
+pbcopy < "$ARCA_DIR/factura-arca-homo.csr"
 ```
 
-La clave `factura-tp.key` es secreta. No se sube a GitHub, no se envía por WhatsApp y no se comparte por correo.
+No compartan ni suban `factura-arca-homo.key`. Es la clave privada.
 
-## Crear el certificado en WSASS
+## Paso 3 — Crear el certificado en WSASS
 
-1. Dentro de WSASS, abran `Nuevo Certificado`.
-2. Escriban un alias claro, por ejemplo `factura-tp-grupo`.
-3. Confirmen que la CUIT mostrada coincida con la CUIT incluida en el CSR.
-4. Abran `factura-tp.csr` con un editor de texto y copien el bloque completo, incluidas las líneas `BEGIN CERTIFICATE REQUEST` y `END CERTIFICATE REQUEST`.
-5. Peguen el CSR en el formulario PKCS#10.
-6. Presionen `Crear DN y obtener certificado`.
-7. Guarden la respuesta como `factura-tp.crt` o `factura-tp.pem` dentro de la carpeta privada.
+1. Dentro de WSASS, entren a `Nuevo Certificado`.
+2. En nombre simbólico o alias escriban `factura-arca-homo`. Si ya existe, usen otro alias claro.
+3. Comprueben que la CUIT no editable sea la misma de `CUIT_CERTIFICADO`.
+4. En la solicitud PKCS#10 peguen el contenido copiado con `Command + V`.
+5. Deben quedar incluidas las líneas `BEGIN CERTIFICATE REQUEST` y `END CERTIFICATE REQUEST`.
+6. Presionen `Crear DN y Obtener Certificado`.
+7. Copien la respuesta completa, desde `BEGIN CERTIFICATE` hasta `END CERTIFICATE`.
 
-Si el alias ya existe, usen `Agregar certificado a alias` en lugar de crear un DN nuevo.
-
-## Autorizar el acceso a WSFEv1
-
-1. En WSASS, abran `Crear autorización a servicio`.
-2. Seleccionen el alias `factura-tp-grupo`.
-3. En `CUIT representado`, indiquen el CUIT que emitirá los comprobantes de prueba.
-4. En la lista de servicios, elijan el servicio de Facturación Electrónica identificado como `wsfe`.
-5. Confirmen con `Crear autorización de acceso`.
-6. Abran `Autorizaciones` y verifiquen que aparezcan el alias, el CUIT representado y el servicio `wsfe`.
-
-## Verificar el certificado descargado
-
-Ejecuten:
+Con el certificado todavía en el portapapeles, vuelvan a la terminal y guárdenlo:
 
 ```bash
-openssl x509 -in factura-tp.crt -noout -subject -issuer -dates
+pbpaste > "$ARCA_DIR/factura-arca-homo.crt"
+
+openssl x509 \
+  -in "$ARCA_DIR/factura-arca-homo.crt" \
+  -noout -subject -issuer -dates
 ```
 
-El certificado y la clave deben corresponder entre sí. Verifíquenlo comparando sus claves públicas:
+Si `openssl x509` da error, el archivo no contiene únicamente el certificado PEM. Vuelvan a copiar el bloque completo desde WSASS.
+
+## Paso 4 — Comprobar que certificado y clave corresponden
 
 ```bash
-openssl pkey -in factura-tp.key -pubout -outform pem | openssl sha256
-openssl x509 -in factura-tp.crt -pubkey -noout | openssl sha256
+openssl pkey \
+  -in "$ARCA_DIR/factura-arca-homo.key" \
+  -pubout -outform pem | openssl sha256
+
+openssl x509 \
+  -in "$ARCA_DIR/factura-arca-homo.crt" \
+  -pubkey -noout | openssl sha256
 ```
 
-Los dos resultados SHA-256 deben ser iguales.
+Los dos valores SHA-256 deben ser idénticos. Si son diferentes, el certificado fue creado con otra clave y no funcionará.
 
-## Configurar el proyecto
+## Paso 5 — Autorizar el servicio de factura electrónica
 
-Desde una terminal, definan las variables sin copiar los archivos al repositorio:
+1. En WSASS abran `Crear Autorización a Servicio`.
+2. Seleccionen el alias creado, por ejemplo `factura-arca-homo`.
+3. Revisen la CUIT del DN; es la del certificado.
+4. En `CUIT representado` escriban el `CUIT_EMISOR` que usará el TP.
+5. En servicio elijan `wsfe`, correspondiente al acceso usado por WSFEv1.
+6. Presionen `Crear Autorización de Acceso`.
+7. Entren a `Autorizaciones` y verifiquen alias, CUIT representado y servicio `wsfe`.
+
+No alcanza con crear el certificado: sin esta autorización WSFE rechazará la operación.
+
+## Paso 6 — Revisar el punto de venta de homologación
+
+WSFE sólo acepta puntos de venta habilitados para la CUIT representada. El proyecto ofrece los puntos 1 y 2. Primero intenten con el punto 1 (`Casa Central`).
+
+Si ARCA informa que el punto de venta es inválido, consulten el asignado mediante `FEParamGetPtosVenta` o el ABM correspondiente. Para ver los puntos locales:
 
 ```bash
+PGPASSWORD=factura123 psql \
+  -h localhost -U factura_user -d facturacion_orm \
+  -c "SELECT id, numero, descripcion FROM punto_venta ORDER BY numero;"
+```
+
+Si, por ejemplo, ARCA indica que deben usar el punto `3`, actualicen Casa Central así:
+
+```bash
+PGPASSWORD=factura123 psql \
+  -h localhost -U factura_user -d facturacion_orm \
+  -c "UPDATE punto_venta SET numero = 3 WHERE descripcion ILIKE '%Casa Central%';"
+```
+
+Reemplacen `3` por el número real devuelto por ARCA. No inventen el punto de venta.
+
+## Paso 7 — Configurar y levantar el proyecto
+
+En una terminal nueva ejecuten el bloque completo. Reemplacen `CUIT_EMISOR` y el tipo de comprobante:
+
+```bash
+cd /Users/francisco/Downloads/FacturaArca
+
 export ARCA_ENABLED=true
-export ARCA_CUIT=20123456789
-export ARCA_PRIVATE_KEY_PATH="$HOME/arca-homologacion/factura-tp.key"
-export ARCA_CERTIFICATE_PATH="$HOME/arca-homologacion/factura-tp.crt"
+export ARCA_CUIT=CUIT_EMISOR
+export ARCA_PRIVATE_KEY_PATH="$HOME/arca-homologacion-factura/factura-arca-homo.key"
+export ARCA_CERTIFICATE_PATH="$HOME/arca-homologacion-factura/factura-arca-homo.crt"
 export ARCA_COMPROBANTE_TIPO=11
-```
 
-`ARCA_COMPROBANTE_TIPO=11` corresponde a Factura C. No cambien el tipo sin confirmar antes la condición tributaria del emisor y el tipo de comprobante habilitado en el punto de venta de homologación.
-
-El proyecto fija internamente estos endpoints de prueba:
-
-- WSAA: `https://wsaahomo.afip.gov.ar/ws/services/LoginCms`
-- WSFEv1: `https://wswhomo.afip.gov.ar/wsfev1/service.asmx`
-
-La aplicación rechaza endpoints que no contengan `homo`, para evitar una emisión accidental en producción.
-
-## Levantar y probar
-
-1. Compilen el frontend:
-
-```bash
-cd frontend
-npm install
-npm run build
-cd ..
-```
-
-2. Ejecuten el backend:
-
-```bash
+npm install --prefix frontend
+npm run build --prefix frontend
 mvn spring-boot:run
 ```
 
-3. Abran `http://localhost:8080`.
-4. La franja superior debe mostrar `Homologación ARCA` y confirmar que las credenciales están listas.
-5. Presionen `Nueva factura`, completen la cabecera y agreguen un artículo desde el maestro de listas de precios.
+Ejemplo: si el CUIT representado es `20999999999`, la línea debe ser `export ARCA_CUIT=20999999999`, sin comillas ni guiones.
+
+No cierren esa terminal mientras usan el sistema. El servidor queda en `http://localhost:8080`.
+
+## Paso 8 — Confirmar la configuración
+
+En otra terminal ejecuten:
+
+```bash
+curl http://localhost:8080/api/arca/estado
+```
+
+La respuesta correcta debe contener:
+
+```text
+"configurada":true
+"ambiente":"HOMOLOGACIÓN"
+```
+
+Si dice `configurada:false`, revisen `ARCA_ENABLED`, la CUIT y las rutas de los archivos.
+
+## Paso 9 — Hacer la primera prueba completa
+
+1. Abran `http://localhost:8080`.
+2. La franja superior debe indicar `Homologación ARCA` y `Credenciales listas`.
+3. Presionen `Nueva factura`.
+4. Elijan fecha, cliente, condición IVA, punto de venta y moneda.
+5. Abran `Buscar artículo`, elijan Minorista o Mayorista y agreguen un artículo.
 6. Presionen `Guardar pendiente`.
-7. En la tabla, presionen `Emitir ARCA` y confirmen la solicitud.
-8. Si ARCA aprueba, el estado cambia a `EMITIDA`, aparece el CAE y la factura deja de poder editarse o eliminarse.
+7. El sistema mostrará un borrador sin número fiscal. Esto es correcto.
+8. En la tabla presionen `Emitir ARCA` y confirmen.
+9. El servidor pide un ticket a WSAA, consulta el último número autorizado y solicita el CAE a WSFEv1.
+10. Si ARCA aprueba, guarda número, CAE y vencimiento, cambia a `EMITIDA` y bloquea la edición.
+11. Si ARCA rechaza, el borrador queda `PENDIENTE` para corregirlo.
 
-## Qué hace el servidor durante la emisión
+## Paso 10 — Qué revisar si falla
 
-1. Crea un TRA para el servicio `wsfe`.
-2. Firma el TRA con la clave privada y el certificado mediante CMS/PKCS#7.
-3. Envía la firma a WSAA y recibe `Token` y `Sign`.
-4. Consulta `FECompUltimoAutorizado` para conocer el último número aprobado.
-5. Usa el número siguiente para llamar a `FECAESolicitar`.
-6. Si el resultado es `A`, guarda el número definitivo, CAE, vencimiento y estado `EMITIDA`.
-7. Si el resultado es rechazado, conserva la factura como `PENDIENTE` y guarda el motivo para corregirla.
+- `La configuración de ARCA está incompleta`: falta una variable, la CUIT no tiene 11 dígitos o una ruta no existe.
+- Error de firma: certificado y clave no corresponden, o el certificado venció.
+- `No autorizado para el servicio`: falta autorizar `wsfe` para el alias y el CUIT representado.
+- Error de CUIT representada: `ARCA_CUIT` no coincide con la CUIT autorizada en WSASS.
+- Punto de venta inválido: el número elegido no está habilitado para esa CUIT en homologación.
+- Tipo de comprobante inválido: `ARCA_COMPROBANTE_TIPO` no corresponde al emisor o receptor.
+- Error de fecha u hora: activen fecha y hora automáticas en macOS y reinicien el servidor.
 
-## Errores frecuentes
+## Comandos de verificación rápida
 
-- `La configuración de ARCA está incompleta`: falta una variable o la ruta no apunta a un archivo válido.
-- Error de certificado o firma: la clave privada no corresponde al certificado, el certificado venció o el archivo no es PEM.
-- `No autorizado para el servicio`: falta crear la autorización `wsfe` para el alias y CUIT representado.
-- Punto de venta inválido: el punto de venta configurado en la base no coincide con uno habilitado en homologación.
-- Número de comprobante incorrecto: no debe inventarse al emitir. El sistema consulta el último autorizado y usa el siguiente.
-- Condición IVA o tipo de comprobante inválidos: revisen la condición del receptor y el tipo A, B o C habilitado para el emisor.
-- Diferencia de hora: verifiquen que la fecha y hora del equipo sean correctas, porque WSAA valida la vigencia del TRA.
+```bash
+ls -l "$HOME/arca-homologacion-factura"
 
-## Producción no forma parte de esta entrega
+openssl x509 \
+  -in "$HOME/arca-homologacion-factura/factura-arca-homo.crt" \
+  -noout -subject -issuer -dates
 
-Homologación y producción usan certificados, autorizaciones y endpoints distintos. Para pasar a producción se requiere un análisis fiscal real, un certificado de producción y una configuración separada. No reutilicen el certificado de testing ni cambien manualmente las URLs de este TP.
+curl http://localhost:8080/api/arca/estado
+```
 
-## Fuentes oficiales consultadas
+La carpeta debe contener la clave `.key`, el CSR `.csr` y el certificado `.crt`. Ninguno debe estar dentro del repositorio.
 
-- ARCA, certificados para testing y producción: https://www.arca.gob.ar/ws/documentacion/certificados.asp
-- ARCA, manual de WSASS: https://arca.gob.ar/ws/WSASS/WSASS_manual.pdf
-- ARCA, adhesión a WSASS: https://arca.gob.ar/ws/WSASS/WSASS_como_adherirse.pdf
-- ARCA, documentación de WSAA: https://www.arca.gob.ar/ws/documentacion/wsaa.asp
-- ARCA, entorno de prueba de factura electrónica: https://arca.gob.ar/fe/ayuda/entorno-prueba.asp
-- ARCA, manual del desarrollador WSFEv1: https://www.arca.gob.ar/fe/documentos/manual-desarrollador-ARCA-COMPG-v4-0.pdf
-- ARCA, inscripción de CUIT: https://arca.gob.ar/inscripcion/cuit-cdi/
+## Fuentes oficiales verificadas
 
-También se revisó el PDF entregado con el proyecto y el ZIP de referencia. Se usaron como material de comparación, pero las URLs, la separación entre ambientes y el procedimiento de certificados se corrigieron con documentación oficial vigente.
+- ARCA, certificados de homologación: https://www.arca.gob.ar/ws/documentacion/certificados.asp
+- ARCA, manual WSASS: https://www.arca.gob.ar/ws/WSASS/html/
+- ARCA, generación del CSR: https://www.arca.gob.ar/ws/WSASS/html/generarcsr.html
+- ARCA, creación del certificado: https://www.arca.gob.ar/ws/WSASS/html/crearcertificado.html
+- ARCA, creación de autorización: https://www.arca.gob.ar/ws/WSASS/html/crearautorizacion.html
+- ARCA, documentación WSAA: https://www.arca.gob.ar/ws/documentacion/wsaa.asp
+- ARCA, documentación WSFEv1: https://www.arca.gob.ar/fe/ayuda/webservice.asp
+
+El proyecto usa únicamente estos endpoints de prueba:
+
+- WSAA: `https://wsaahomo.afip.gov.ar/ws/services/LoginCms`
+- WSFEv1: `https://wswhomo.afip.gov.ar/wsfev1/service.asmx`

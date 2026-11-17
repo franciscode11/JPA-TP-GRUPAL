@@ -61,7 +61,7 @@ public class FacturaReporteExportService {
             NumberFormat formatoImporte = NumberFormat.getCurrencyInstance(new Locale("es", "AR"));
 
             for (FacturaReporteDTO factura : facturas) {
-                agregarCelda(tabla, String.valueOf(factura.getNumeroFactura()), Element.ALIGN_RIGHT);
+                agregarCelda(tabla, numeroVisible(factura), Element.ALIGN_RIGHT);
                 agregarCelda(tabla, formatoFecha.format(factura.getFechaEmision()), Element.ALIGN_CENTER);
                 agregarCelda(tabla, factura.getClienteDenominacion(), Element.ALIGN_LEFT);
                 agregarCelda(tabla, factura.getCondicionIva(), Element.ALIGN_LEFT);
@@ -101,7 +101,11 @@ public class FacturaReporteExportService {
             int fila = 1;
             for (FacturaReporteDTO factura : facturas) {
                 Row row = hoja.createRow(fila++);
-                row.createCell(0).setCellValue(factura.getNumeroFactura());
+                if (factura.getNumeroFactura() == null) {
+                    row.createCell(0).setCellValue("Borrador #" + factura.getId());
+                } else {
+                    row.createCell(0).setCellValue(factura.getNumeroFactura());
+                }
 
                 Cell fecha = row.createCell(1);
                 fecha.setCellValue(factura.getFechaEmision());
@@ -141,6 +145,12 @@ public class FacturaReporteExportService {
             celda.setPadding(6);
             tabla.addCell(celda);
         }
+    }
+
+    private String numeroVisible(FacturaReporteDTO factura) {
+        return factura.getNumeroFactura() == null
+                ? "Borrador #" + factura.getId()
+                : String.valueOf(factura.getNumeroFactura());
     }
 
     private void agregarCelda(PdfPTable tabla, String texto, int alineacion) {

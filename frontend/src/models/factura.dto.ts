@@ -5,7 +5,6 @@ export interface FacturaDetalleRequestDTO {
 }
 
 export interface FacturaRequestDTO {
-  numeroFactura?: number;
   fechaEmision?: string;
   clienteId?: number;
   condicionIvaId?: number;
@@ -17,7 +16,7 @@ export interface FacturaRequestDTO {
 
 export interface FacturaReporteDTO {
   id: number;
-  numeroFactura: number;
+  numeroFactura: number | null;
   fechaEmision: string;
   clienteDenominacion: string;
   condicionIva: string;
@@ -40,7 +39,7 @@ export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {
 
 export interface FacturaEdicionDTO extends Omit<FacturaRequestDTO, "detalles"> {
   id: number;
-  numeroFactura: number;
+  numeroFactura: number | null;
   fechaEmision: string;
   clienteId: number;
   condicionIvaId: number;

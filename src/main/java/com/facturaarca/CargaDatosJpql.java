@@ -112,7 +112,7 @@ public class CargaDatosJpql {
         Articulo lampara = crearArticulo(em, administrador, hogar, null, "ART-J04", "Lámpara LED");
         Articulo articuloSinVentas = crearArticulo(em, administrador, hogar, sinVentas, "ART-J05", "Artículo sin ventas");
 
-        ListaPrecio listaGeneral = crearListaPrecio(em, administrador, "LP-JPQL", "Lista General JPQL");
+        ListaPrecio listaGeneral = crearListaPrecio(em, administrador, "LP-JPQL", "Mayorista");
         ListaPrecioArticulo precioMouse = crearPrecio(em, administrador, listaGeneral, mouse, 30000);
         ListaPrecioArticulo precioTeclado = crearPrecio(em, administrador, listaGeneral, teclado, 5000);
         ListaPrecioArticulo precioAuriculares = crearPrecio(em, administrador, listaGeneral, auriculares, 18000);

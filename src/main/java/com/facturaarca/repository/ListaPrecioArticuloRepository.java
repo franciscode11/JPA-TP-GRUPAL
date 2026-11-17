@@ -24,6 +24,12 @@ public interface ListaPrecioArticuloRepository extends JpaRepository<ListaPrecio
             SELECT precio
             FROM ListaPrecioArticulo precio
             WHERE (:listaPrecioId IS NULL OR precio.listaPrecio.id = :listaPrecioId)
+              AND precio.id = (
+                  SELECT MIN(otro.id)
+                  FROM ListaPrecioArticulo otro
+                  WHERE LOWER(otro.listaPrecio.codigo) = LOWER(precio.listaPrecio.codigo)
+                    AND LOWER(otro.articulo.codigo) = LOWER(precio.articulo.codigo)
+              )
               AND (:texto = '' OR LOWER(precio.articulo.codigo) LIKE LOWER(CONCAT('%', :texto, '%'))
                    OR LOWER(precio.articulo.denominacion) LIKE LOWER(CONCAT('%', :texto, '%')))
             ORDER BY precio.articulo.denominacion, precio.articulo.codigo

@@ -71,7 +71,7 @@ class FacturaRestControllerTest {
     @Test
     void creaUnaFacturaYDevuelve201() throws Exception {
         FacturaReporteDTO creada = new FacturaReporteDTO(
-                7L, 1001L, fecha(2026, 3, 15), "Cliente de prueba",
+                7L, null, fecha(2026, 3, 15), "Cliente de prueba",
                 "Consumidor Final", "Casa Central", 1210, 1, "PENDIENTE", null
         );
         when(facturaService.crear(any())).thenReturn(creada);
@@ -80,7 +80,6 @@ class FacturaRestControllerTest {
                         .contentType("application/json")
                         .content("""
                                 {
-                                  "numeroFactura": 1001,
                                   "fechaEmision": "2026-03-15",
                                   "clienteId": 1,
                                   "condicionIvaId": 1,
@@ -91,6 +90,7 @@ class FacturaRestControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/facturas/7"))
+                .andExpect(jsonPath("$.numeroFactura").doesNotExist())
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"));
     }
 

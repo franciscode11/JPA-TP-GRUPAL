@@ -2,6 +2,7 @@ package com.facturaarca.service;
 
 import com.facturaarca.dto.CatalogosDTO;
 import com.facturaarca.dto.PaginaDTO;
+import com.facturaarca.model.ListaPrecio;
 import com.facturaarca.repository.ClienteRepository;
 import com.facturaarca.repository.CondicionIvaRepository;
 import com.facturaarca.repository.ListaPrecioArticuloRepository;
@@ -87,7 +88,7 @@ public class CatalogoService {
         List<CatalogosDTO.OpcionCatalogoDTO> listasPrecio = unicos(
                 listaPrecioRepository.findAllByOrderByDenominacionAsc().stream()
                         .map(lista -> new CatalogosDTO.OpcionCatalogoDTO(
-                                lista.getId(), lista.getDenominacion().trim()
+                                lista.getId(), nombreListaPrecio(lista)
                         ))
                         .toList(),
                 opcion -> normalizar(opcion.nombre())
@@ -116,7 +117,7 @@ public class CatalogoService {
                         precio.getArticulo().getId(),
                         precio.getArticulo().getCodigo().trim(),
                         precio.getArticulo().getDenominacion().trim(),
-                        precio.getListaPrecio().getDenominacion().trim(),
+                        nombreListaPrecio(precio.getListaPrecio()),
                         precio.getPrecioVenta()
                 ))
                 .toList();
@@ -134,6 +135,17 @@ public class CatalogoService {
 
     private static String limpiarSufijoCarga(String texto) {
         return texto == null ? "" : texto.replaceFirst("(?i)\\s+JPQL$", "").trim();
+    }
+
+    private static String nombreListaPrecio(ListaPrecio lista) {
+        String codigo = normalizar(lista.getCodigo());
+        if (codigo.equals("lp001") || codigo.contains("minorista")) {
+            return "Minorista";
+        }
+        if (codigo.equals("lp-jpql") || codigo.contains("mayorista")) {
+            return "Mayorista";
+        }
+        return limpiarSufijoCarga(lista.getDenominacion());
     }
 
     private static String normalizar(String texto) {

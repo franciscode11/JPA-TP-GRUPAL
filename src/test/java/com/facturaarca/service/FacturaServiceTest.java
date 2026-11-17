@@ -105,7 +105,6 @@ class FacturaServiceTest {
     @Test
     void creaLaFacturaCalculaImportesYPersisteElDetalleEnCascada() {
         FacturaRequestDTO request = new FacturaRequestDTO(
-                1001L,
                 new Date(),
                 2L,
                 3L,
@@ -121,6 +120,7 @@ class FacturaServiceTest {
         assertThat(resultado.getImporteTotal()).isEqualTo(2178d);
         assertThat(resultado.getCantidadItems()).isEqualTo(1);
         assertThat(resultado.getEstado()).isEqualTo("PENDIENTE");
+        assertThat(resultado.getNumeroFactura()).isNull();
     }
 
     @Test

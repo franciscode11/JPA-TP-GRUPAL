@@ -40,27 +40,115 @@ function notificar(mensaje, tipo = "exito") {
     aviso.className = `aviso visible ${tipo}`;
     window.setTimeout(() => aviso.classList.remove("visible"), 4200);
 }
+const MESES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+const DIAS = ["L", "M", "M", "J", "V", "S", "D"];
+function fechaIso(fecha) {
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+    const dia = String(fecha.getDate()).padStart(2, "0");
+    return `${anio}-${mes}-${dia}`;
+}
+function fechaVisible(iso, placeholder) {
+    if (!iso)
+        return placeholder;
+    const [anio, mes, dia] = iso.split("-");
+    return `${dia}/${mes}/${anio}`;
+}
+function actualizarFechaPersonalizada(input, contenedor) {
+    const texto = contenedor.querySelector(".fecha-texto");
+    if (texto)
+        texto.textContent = fechaVisible(input.value, input.dataset.placeholder ?? "Elegir fecha");
+    contenedor.querySelector(".fecha-control")
+        ?.classList.toggle("sin-fecha", !input.value);
+}
+function cerrarCalendarios(excepto) {
+    document.querySelectorAll(".fecha-personalizada.abierto").forEach((calendario) => {
+        if (calendario === excepto)
+            return;
+        calendario.classList.remove("abierto");
+        calendario.querySelector(".fecha-control")?.setAttribute("aria-expanded", "false");
+        const panel = calendario.querySelector(".calendario-popup");
+        if (panel)
+            panel.hidden = true;
+    });
+}
 function personalizarFecha(input) {
-    if (input.closest(".fecha-personalizada"))
+    const existente = input.closest(".fecha-personalizada");
+    if (existente) {
+        actualizarFechaPersonalizada(input, existente);
         return;
+    }
     const contenedor = document.createElement("div");
     contenedor.className = "fecha-personalizada";
     input.before(contenedor);
     contenedor.append(input);
-    const boton = document.createElement("button");
-    boton.type = "button";
-    boton.className = "fecha-boton";
-    boton.setAttribute("aria-label", "Abrir calendario");
-    boton.innerHTML = '<i data-lucide="calendar-days"></i>';
-    boton.addEventListener("click", () => {
-        try {
-            input.showPicker();
+    const control = document.createElement("button");
+    control.type = "button";
+    control.className = "fecha-control";
+    control.setAttribute("aria-haspopup", "dialog");
+    control.setAttribute("aria-expanded", "false");
+    control.innerHTML = '<span class="fecha-texto"></span><i data-lucide="calendar-days"></i>';
+    const panel = document.createElement("div");
+    panel.className = "calendario-popup";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "Elegir fecha");
+    panel.hidden = true;
+    contenedor.append(control, panel);
+    let mesVisible = input.value ? new Date(`${input.value}T12:00:00`) : new Date();
+    const dibujar = () => {
+        const anio = mesVisible.getFullYear();
+        const mes = mesVisible.getMonth();
+        const primerDia = (new Date(anio, mes, 1).getDay() + 6) % 7;
+        const totalDias = new Date(anio, mes + 1, 0).getDate();
+        const seleccionado = input.value;
+        const hoy = fechaIso(new Date());
+        const dias = Array.from({ length: primerDia }, () => '<span class="calendario-hueco"></span>');
+        for (let dia = 1; dia <= totalDias; dia++) {
+            const iso = fechaIso(new Date(anio, mes, dia));
+            dias.push(`<button type="button" class="calendario-dia${iso === seleccionado ? " seleccionado" : ""}${iso === hoy ? " hoy" : ""}" data-fecha="${iso}" aria-label="${dia} de ${MESES[mes]} de ${anio}">${dia}</button>`);
         }
-        catch {
-            input.focus();
+        panel.innerHTML = `
+      <div class="calendario-cabecera">
+        <button type="button" class="calendario-nav mes-anterior" aria-label="Mes anterior"><i data-lucide="chevron-left"></i></button>
+        <strong>${MESES[mes]} ${anio}</strong>
+        <button type="button" class="calendario-nav mes-siguiente" aria-label="Mes siguiente"><i data-lucide="chevron-right"></i></button>
+      </div>
+      <div class="calendario-semana">${DIAS.map((dia) => `<span>${dia}</span>`).join("")}</div>
+      <div class="calendario-dias">${dias.join("")}</div>`;
+        panel.querySelector(".mes-anterior")?.addEventListener("click", () => {
+            mesVisible = new Date(anio, mes - 1, 1);
+            dibujar();
+        });
+        panel.querySelector(".mes-siguiente")?.addEventListener("click", () => {
+            mesVisible = new Date(anio, mes + 1, 1);
+            dibujar();
+        });
+        panel.querySelectorAll("[data-fecha]").forEach((dia) => {
+            dia.addEventListener("click", () => {
+                input.value = dia.dataset.fecha ?? "";
+                input.dispatchEvent(new Event("change", { bubbles: true }));
+                actualizarFechaPersonalizada(input, contenedor);
+                cerrarCalendarios();
+            });
+        });
+        renderizarIconos();
+    };
+    control.addEventListener("click", () => {
+        const abrir = !contenedor.classList.contains("abierto");
+        cerrarSelectores();
+        cerrarCalendarios(contenedor);
+        contenedor.classList.toggle("abierto", abrir);
+        control.setAttribute("aria-expanded", String(abrir));
+        panel.hidden = !abrir;
+        if (abrir) {
+            mesVisible = input.value ? new Date(`${input.value}T12:00:00`) : new Date();
+            dibujar();
         }
     });
-    contenedor.append(boton);
+    actualizarFechaPersonalizada(input, contenedor);
 }
 function cerrarSelectores(excepto) {
     document.querySelectorAll(".selector-personalizado.abierto").forEach((selector) => {
@@ -72,19 +160,6 @@ function cerrarSelectores(excepto) {
         if (menu)
             menu.hidden = true;
     });
-}
-function posicionarMenu(trigger, menu) {
-    const rect = trigger.getBoundingClientRect();
-    const margen = 10;
-    const espacioAbajo = window.innerHeight - rect.bottom - margen;
-    const espacioArriba = rect.top - margen;
-    const abreArriba = espacioAbajo < 190 && espacioArriba > espacioAbajo;
-    const maximo = Math.max(120, Math.min(260, (abreArriba ? espacioArriba : espacioAbajo) - 8));
-    menu.style.left = `${Math.max(margen, Math.min(rect.left, window.innerWidth - rect.width - margen))}px`;
-    menu.style.top = abreArriba ? "auto" : `${rect.bottom + 7}px`;
-    menu.style.bottom = abreArriba ? `${window.innerHeight - rect.top + 7}px` : "auto";
-    menu.style.width = `${Math.min(rect.width, window.innerWidth - margen * 2)}px`;
-    menu.style.maxHeight = `${maximo}px`;
 }
 function actualizarSelector(select, selector) {
     const trigger = selector.querySelector(".selector-trigger");
@@ -135,12 +210,11 @@ function personalizarSelector(select) {
     selector.append(trigger, menu);
     trigger.addEventListener("click", () => {
         const abrir = !selector.classList.contains("abierto");
+        cerrarCalendarios();
         cerrarSelectores(selector);
         selector.classList.toggle("abierto", abrir);
         trigger.setAttribute("aria-expanded", String(abrir));
         menu.hidden = !abrir;
-        if (abrir)
-            posicionarMenu(trigger, menu);
     });
     trigger.addEventListener("keydown", (evento) => {
         if (evento.key === "Escape")
@@ -150,7 +224,7 @@ function personalizarSelector(select) {
     actualizarSelector(select, selector);
 }
 function personalizarControles(raiz = document) {
-    raiz.querySelectorAll('input.control[type="date"]').forEach(personalizarFecha);
+    raiz.querySelectorAll("input[data-calendario]").forEach(personalizarFecha);
     raiz.querySelectorAll("select.control").forEach(personalizarSelector);
     renderizarIconos();
 }
@@ -173,7 +247,7 @@ function abrirFormulario() {
     requestAnimationFrame(() => seccion.classList.add("visible"));
     elemento("#mostrar-factura").setAttribute("aria-expanded", "true");
     seccion.scrollIntoView({ behavior: "smooth", block: "start" });
-    elemento("#numero-factura").focus({ preventScroll: true });
+    elemento("#factura-form .fecha-control").focus({ preventScroll: true });
 }
 function ocultarFormulario() {
     const seccion = elemento("#seccion-alta");
@@ -185,7 +259,7 @@ function reiniciarFormulario() {
     facturaEditandoId = null;
     elemento("#titulo-alta").textContent = "Nueva factura";
     elemento("#factura-form").reset();
-    elemento("#fecha-emision").valueAsDate = new Date();
+    elemento("#fecha-emision").value = fechaIso(new Date());
     items = [];
     renderizarDetalles();
     actualizarBotonGuardar("Guardar pendiente", "save");
@@ -265,7 +339,7 @@ async function cargarArticulos() {
 function renderizarArticulos(pagina) {
     const contenedor = elemento("#articulos-resultados");
     if (pagina.contenido.length === 0) {
-        contenedor.innerHTML = '<div class="resultado-vacio">No hay artículos para esta búsqueda.</div>';
+        contenedor.innerHTML = '<div class="resultado-vacio"><i data-lucide="package-x"></i><span>No hay artículos para esta búsqueda.</span></div>';
     }
     else {
         contenedor.innerHTML = pagina.contenido.map((articulo) => `
@@ -336,12 +410,13 @@ function accionesFactura(factura) {
     }
     const emitirDeshabilitado = !estadoArca?.configurada ? "disabled" : "";
     const tituloEmitir = estadoArca?.configurada ? "Solicitar CAE en homologación" : escapar(estadoArca?.mensaje);
+    const etiqueta = factura.numeroFactura == null ? `borrador #${factura.id}` : `factura #${factura.numeroFactura}`;
     return `
-    <button class="boton-tabla emitir" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="${tituloEmitir}" ${emitirDeshabilitado}>
+    <button class="boton-tabla emitir" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}" title="${tituloEmitir}" ${emitirDeshabilitado}>
       <i data-lucide="send"></i><span>Emitir ARCA</span>
     </button>
     <button class="boton-tabla editar" type="button" data-id="${factura.id}"><i data-lucide="pencil"></i><span>Editar</span></button>
-    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>`;
+    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>`;
 }
 function renderizarFacturas(pagina) {
     elemento("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
@@ -352,7 +427,7 @@ function renderizarFacturas(pagina) {
     else {
         cuerpo.innerHTML = pagina.contenido.map((factura) => `
       <tr>
-        <td><strong>#${String(factura.numeroFactura).padStart(8, "0")}</strong><small>${escapar(factura.condicionIva)}</small></td>
+        <td><strong>${factura.numeroFactura == null ? `Borrador #${factura.id}` : `#${String(factura.numeroFactura).padStart(8, "0")}`}</strong><small>${escapar(factura.condicionIva)}</small></td>
         <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
         <td>${escapar(factura.clienteDenominacion)}</td>
         <td>${escapar(factura.puntoVentaDescripcion)}</td>
@@ -386,6 +461,10 @@ async function cargarFacturas() {
 }
 async function guardarFactura(evento) {
     evento.preventDefault();
+    if (!valor("fecha-emision")) {
+        notificar("Elegí la fecha de emisión.", "error");
+        return;
+    }
     if (items.length === 0) {
         notificar("Agregá al menos un artículo desde el maestro.", "error");
         return;
@@ -395,7 +474,6 @@ async function guardarFactura(evento) {
         return;
     }
     const request = {
-        numeroFactura: numero(valor("numero-factura")),
         fechaEmision: valor("fecha-emision"),
         clienteId: Number(valor("cliente-id")),
         condicionIvaId: Number(valor("condicion-iva-id")),
@@ -411,12 +489,15 @@ async function guardarFactura(evento) {
     actualizarBotonGuardar("Guardando...", "loader-circle");
     try {
         const editando = facturaEditandoId !== null;
-        const guardada = editando
-            ? await servicio.actualizarFactura(facturaEditandoId, request)
-            : await servicio.crearFactura(request);
+        if (editando) {
+            await servicio.actualizarFactura(facturaEditandoId, request);
+        }
+        else {
+            await servicio.crearFactura(request);
+        }
         notificar(editando
-            ? `Factura #${guardada.numeroFactura} actualizada.`
-            : `Factura #${guardada.numeroFactura} guardada como pendiente.`);
+            ? "Borrador actualizado correctamente."
+            : "Borrador guardado como pendiente. ARCA asignará el número al emitirlo.");
         ocultarFormulario();
         paginaFacturas = 0;
         await cargarFacturas();
@@ -437,8 +518,7 @@ async function cargarFacturaParaEditar(id) {
             return;
         }
         facturaEditandoId = factura.id;
-        elemento("#titulo-alta").textContent = `Editar factura #${factura.numeroFactura}`;
-        elemento("#numero-factura").value = String(factura.numeroFactura);
+        elemento("#titulo-alta").textContent = `Editar borrador #${factura.id}`;
         elemento("#fecha-emision").value = factura.fechaEmision;
         elemento("#cliente-id").value = String(factura.clienteId);
         elemento("#condicion-iva-id").value = String(factura.condicionIvaId);
@@ -504,7 +584,7 @@ async function accionFactura(evento) {
         if (boton.classList.contains("emitir")) {
             const confirmada = await pedirConfirmacion({
                 tipo: "Emitir en homologación",
-                titulo: `¿Solicitar CAE para la factura #${boton.dataset.numero}?`,
+                titulo: `¿Solicitar CAE para ${boton.dataset.etiqueta}?`,
                 descripcion: "Se enviará a ARCA en el entorno de pruebas. Si ARCA la aprueba, quedará bloqueada y pasará a EMITIDA.",
                 confirmar: "Solicitar CAE",
                 accion: "emitir",
@@ -517,7 +597,7 @@ async function accionFactura(evento) {
         if (boton.classList.contains("eliminar")) {
             const confirmada = await pedirConfirmacion({
                 tipo: "Eliminar borrador",
-                titulo: `¿Eliminar la factura #${boton.dataset.numero}?`,
+                titulo: `¿Eliminar ${boton.dataset.etiqueta}?`,
                 descripcion: "Se borrará el comprobante pendiente y todos sus renglones. Esta acción no se puede deshacer.",
                 confirmar: "Eliminar",
                 accion: "eliminar",
@@ -614,8 +694,13 @@ function enlazarEventos() {
     document.addEventListener("click", (evento) => {
         if (!evento.target.closest(".selector-personalizado"))
             cerrarSelectores();
+        if (!evento.target.closest(".fecha-personalizada"))
+            cerrarCalendarios();
     });
-    window.addEventListener("resize", () => cerrarSelectores());
+    window.addEventListener("resize", () => {
+        cerrarSelectores();
+        cerrarCalendarios();
+    });
 }
 async function iniciar() {
     enlazarEventos();

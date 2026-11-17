@@ -175,10 +175,6 @@ public class FacturaService {
             throw new IllegalStateException("Sólo las facturas pendientes pueden editarse");
         }
 
-        if (request.getNumeroFactura() != null) {
-            validarNumero(request.getNumeroFactura());
-            factura.setNumero(request.getNumeroFactura());
-        }
         if (request.getFechaEmision() != null) {
             factura.setFechaEmision(request.getFechaEmision());
         }
@@ -248,7 +244,8 @@ public class FacturaService {
     }
 
     private void aplicarCabecera(FacturaVenta factura, FacturaRequestDTO request) {
-        factura.setNumero(request.getNumeroFactura());
+        // El número fiscal lo asigna ARCA al aprobar la emisión.
+        factura.setNumero(null);
         factura.setFechaEmision(request.getFechaEmision());
         factura.setCliente(clienteRepository.findById(request.getClienteId())
                 .orElseThrow(() -> noExiste("Cliente", request.getClienteId())));
@@ -345,7 +342,6 @@ public class FacturaService {
         if (request == null) {
             throw new IllegalArgumentException("El cuerpo de la petición es obligatorio");
         }
-        validarNumero(request.getNumeroFactura());
         if (request.getFechaEmision() == null) {
             throw new IllegalArgumentException("La fecha de emisión es obligatoria");
         }
@@ -357,12 +353,6 @@ public class FacturaService {
         }
         if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
             throw new IllegalArgumentException("La factura debe tener al menos un detalle");
-        }
-    }
-
-    private void validarNumero(Long numeroFactura) {
-        if (numeroFactura == null || numeroFactura <= 0) {
-            throw new IllegalArgumentException("El número de factura debe ser mayor que cero");
         }
     }
 

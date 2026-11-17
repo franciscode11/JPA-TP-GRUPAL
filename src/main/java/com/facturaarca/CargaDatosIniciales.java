@@ -146,7 +146,7 @@ public class CargaDatosIniciales {
             ListaPrecio listaPrecio = new ListaPrecio();
 
             listaPrecio.setCodigo("LP001");
-            listaPrecio.setDenominacion("Lista General");
+            listaPrecio.setDenominacion("Minorista");
 
             completarAuditoria(listaPrecio, usuario);
 
