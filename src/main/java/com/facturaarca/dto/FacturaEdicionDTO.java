@@ -15,6 +15,6 @@ public record FacturaEdicionDTO(
         Long tipoMonedaId,
         String estado,
         String observaciones,
-        List<FacturaDetalleRequestDTO> detalles
+        List<FacturaDetalleEdicionDTO> detalles
 ) {
 }

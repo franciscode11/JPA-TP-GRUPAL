@@ -29,18 +29,23 @@ export class FacturaService {
             body: JSON.stringify(factura),
         });
     }
-    async actualizarEstado(id, estado, observaciones) {
-        return this.solicitar(`${this.baseUrl}/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ estado, observaciones }),
-        });
+    async emitirEnArca(id) {
+        return this.solicitar(`${this.baseUrl}/${id}/emitir`, { method: "POST" });
     }
     async eliminarFactura(id) {
         await this.solicitar(`${this.baseUrl}/${id}`, { method: "DELETE" });
     }
     async obtenerCatalogos() {
         return this.solicitar("/api/catalogos");
+    }
+    async buscarArticulos(listaPrecioId, texto, pagina) {
+        const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: "8" });
+        if (listaPrecioId !== undefined)
+            parametros.set("listaPrecioId", String(listaPrecioId));
+        return this.solicitar(`/api/catalogos/articulos?${parametros}`);
+    }
+    async obtenerEstadoArca() {
+        return this.solicitar("/api/arca/estado");
     }
     async solicitar(url, opciones) {
         const respuesta = await fetch(url, opciones);
@@ -61,4 +66,4 @@ export class FacturaService {
         return respuesta.json();
     }
 }
-//# sourceMappingURL=FacturaService.js.map
+//# sourceMappingURL=FacturaApiService.js.map

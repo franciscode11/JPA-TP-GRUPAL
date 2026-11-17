@@ -1,9 +1,13 @@
 package com.facturaarca.service;
 
 import com.facturaarca.dto.FacturaDetalleRequestDTO;
+import com.facturaarca.dto.FacturaDetalleEdicionDTO;
 import com.facturaarca.dto.FacturaEdicionDTO;
 import com.facturaarca.dto.FacturaReporteDTO;
 import com.facturaarca.dto.FacturaRequestDTO;
+import com.facturaarca.dto.PaginaDTO;
+import com.facturaarca.arca.ArcaHomologacionClient;
+import com.facturaarca.arca.ResultadoArca;
 import com.facturaarca.exception.RecursoNoEncontradoException;
 import com.facturaarca.model.AuditoriaApp;
 import com.facturaarca.model.FacturaVenta;
@@ -42,6 +46,7 @@ public class FacturaService {
     private final TipoMonedaRepository tipoMonedaRepository;
     private final ListaPrecioArticuloRepository listaPrecioArticuloRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ArcaHomologacionClient arcaClient;
 
     public FacturaService(
             FacturaRepository facturaRepository,
@@ -51,7 +56,8 @@ public class FacturaService {
             PuntoVentaRepository puntoVentaRepository,
             TipoMonedaRepository tipoMonedaRepository,
             ListaPrecioArticuloRepository listaPrecioArticuloRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            ArcaHomologacionClient arcaClient
     ) {
         this.facturaRepository = facturaRepository;
         this.facturaReporteRepository = facturaReporteRepository;
@@ -61,6 +67,27 @@ public class FacturaService {
         this.tipoMonedaRepository = tipoMonedaRepository;
         this.listaPrecioArticuloRepository = listaPrecioArticuloRepository;
         this.usuarioRepository = usuarioRepository;
+        this.arcaClient = arcaClient;
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaDTO<FacturaReporteDTO> buscarFacturasPaginadas(
+            Date fechaDesde,
+            Date fechaHasta,
+            String estado,
+            Double montoMinimo,
+            Long numeroFactura,
+            Long clienteId,
+            Boolean informadaArca,
+            int pagina,
+            int tamanio
+    ) {
+        validarFiltros(fechaDesde, fechaHasta, montoMinimo);
+        validarPaginacion(pagina, tamanio);
+        return facturaReporteRepository.buscarPagina(
+                fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
+                numeroFactura, clienteId, informadaArca, pagina, tamanio
+        );
     }
 
     @Transactional(readOnly = true)
@@ -68,18 +95,24 @@ public class FacturaService {
             Date fechaDesde,
             Date fechaHasta,
             String estado,
-            Double montoMinimo
+            Double montoMinimo,
+            Long numeroFactura,
+            Long clienteId,
+            Boolean informadaArca
     ) {
         validarFiltros(fechaDesde, fechaHasta, montoMinimo);
-        String estadoNormalizado = StringUtils.hasText(estado)
-                ? estado.trim().toUpperCase(Locale.ROOT)
-                : null;
+        return facturaReporteRepository.buscarTodos(
+                fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
+                numeroFactura, clienteId, informadaArca
+        );
+    }
 
-        return facturaReporteRepository.buscarFacturasFiltradas(
-                fechaDesde,
-                fechaHasta,
-                estadoNormalizado,
-                montoMinimo
+    @Transactional(readOnly = true)
+    public List<FacturaReporteDTO> buscarFacturasFiltradas(
+            Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo
+    ) {
+        return buscarFacturasFiltradas(
+                fechaDesde, fechaHasta, estado, montoMinimo, null, null, null
         );
     }
 
@@ -90,13 +123,11 @@ public class FacturaService {
         Usuario usuario = obtenerUsuarioSistema();
         FacturaVenta factura = new FacturaVenta();
         aplicarCabecera(factura, request);
-        factura.setEstado(normalizarEstado(request.getEstado(), "EMITIDA"));
+        factura.setEstado("PENDIENTE");
         factura.setObservaciones(limpiar(request.getObservaciones()));
         completarAuditoriaAlta(factura, usuario);
 
         reemplazarDetalles(factura, request.getDetalles());
-        actualizarAnulacion(factura);
-
         return convertirAReporte(facturaRepository.saveAndFlush(factura));
     }
 
@@ -118,8 +149,13 @@ public class FacturaService {
                 factura.getEstado(),
                 factura.getObservaciones(),
                 factura.getDetalles().stream()
-                        .map(detalle -> new FacturaDetalleRequestDTO(
+                        .map(detalle -> new FacturaDetalleEdicionDTO(
+                                detalle.getListaPrecioArticulo().getId(),
                                 detalle.getListaPrecioArticulo().getArticulo().getId(),
+                                detalle.getListaPrecioArticulo().getArticulo().getCodigo(),
+                                detalle.getListaPrecioArticulo().getArticulo().getDenominacion(),
+                                detalle.getListaPrecioArticulo().getListaPrecio().getDenominacion(),
+                                detalle.getPrecioUnitario(),
                                 detalle.getCantidad(),
                                 detalle.getPorcentajeBonificacion()
                         ))
@@ -135,8 +171,8 @@ public class FacturaService {
 
         FacturaVenta factura = buscarFactura(id);
 
-        if ("ANULADA".equals(factura.getEstado())) {
-            throw new IllegalStateException("Una factura anulada se conserva como registro histórico y no puede editarse");
+        if (!"PENDIENTE".equals(factura.getEstado())) {
+            throw new IllegalStateException("Sólo las facturas pendientes pueden editarse");
         }
 
         if (request.getNumeroFactura() != null) {
@@ -162,9 +198,6 @@ public class FacturaService {
             factura.setTipoMoneda(tipoMonedaRepository.findById(request.getTipoMonedaId())
                     .orElseThrow(() -> noExiste("Tipo de moneda", request.getTipoMonedaId())));
         }
-        if (request.getEstado() != null) {
-            factura.setEstado(normalizarEstado(request.getEstado(), null));
-        }
         if (request.getObservaciones() != null) {
             factura.setObservaciones(limpiar(request.getObservaciones()));
         }
@@ -177,14 +210,39 @@ public class FacturaService {
 
         factura.setFechaModificacion(new Date());
         factura.setUsuarioModificacion(obtenerUsuarioSistema());
-        actualizarAnulacion(factura);
+        return convertirAReporte(facturaRepository.saveAndFlush(factura));
+    }
 
+    @Transactional
+    public FacturaReporteDTO emitirEnArca(Long id) {
+        FacturaVenta factura = buscarFactura(id);
+        if (!"PENDIENTE".equals(factura.getEstado())) {
+            throw new IllegalStateException("La factura ya fue informada o no está pendiente");
+        }
+
+        ResultadoArca resultado = arcaClient.emitir(factura);
+        factura.setResultadoAfip(resultado.resultado());
+        factura.setMotivoRechazo(resultado.aprobado() ? null : resultado.mensaje());
+        factura.setFechaModificacion(new Date());
+        factura.setUsuarioModificacion(obtenerUsuarioSistema());
+
+        if (resultado.aprobado()) {
+            factura.setNumero(resultado.numeroComprobante());
+            factura.setCae(resultado.cae());
+            factura.setCaeFechaVencimiento(resultado.vencimientoCae());
+            factura.setEstado("EMITIDA");
+        }
         return convertirAReporte(facturaRepository.saveAndFlush(factura));
     }
 
     @Transactional
     public void eliminar(Long id) {
         FacturaVenta factura = buscarFactura(id);
+        if (!"PENDIENTE".equals(factura.getEstado())) {
+            throw new IllegalStateException(
+                    "Una factura emitida no se elimina. Para corregirla corresponde una nota de crédito"
+            );
+        }
         facturaRepository.delete(factura);
         facturaRepository.flush();
     }
@@ -210,8 +268,8 @@ public class FacturaService {
             validarDetalle(request);
 
             ListaPrecioArticulo precioArticulo = listaPrecioArticuloRepository
-                    .findFirstByArticuloIdOrderByIdDesc(request.getArticuloId())
-                    .orElseThrow(() -> noExiste("Artículo con precio", request.getArticuloId()));
+                    .findById(request.getListaPrecioArticuloId())
+                    .orElseThrow(() -> noExiste("Artículo de lista de precios", request.getListaPrecioArticuloId()));
 
             BigDecimal cantidad = BigDecimal.valueOf(request.getCantidad());
             BigDecimal precio = BigDecimal.valueOf(precioArticulo.getPrecioVenta());
@@ -266,16 +324,6 @@ public class FacturaService {
         entidad.setUsuarioModificacion(usuario);
     }
 
-    private void actualizarAnulacion(FacturaVenta factura) {
-        if ("ANULADA".equals(factura.getEstado())) {
-            if (factura.getFechaAnulacion() == null) {
-                factura.setFechaAnulacion(new Date());
-            }
-        } else {
-            factura.setFechaAnulacion(null);
-        }
-    }
-
     private FacturaReporteDTO convertirAReporte(FacturaVenta factura) {
         return new FacturaReporteDTO(
                 factura.getId(),
@@ -287,7 +335,9 @@ public class FacturaService {
                 factura.getImporteTotal(),
                 factura.getDetalles().size(),
                 factura.getEstado(),
-                factura.getObservaciones()
+                factura.getObservaciones(),
+                factura.getCae(),
+                factura.getResultadoAfip()
         );
     }
 
@@ -317,8 +367,8 @@ public class FacturaService {
     }
 
     private void validarDetalle(FacturaDetalleRequestDTO detalle) {
-        if (detalle == null || detalle.getArticuloId() == null) {
-            throw new IllegalArgumentException("Cada detalle debe indicar un artículo");
+        if (detalle == null || detalle.getListaPrecioArticuloId() == null) {
+            throw new IllegalArgumentException("Cada detalle debe indicar un artículo de una lista de precios");
         }
         if (detalle.getCantidad() == null || detalle.getCantidad() <= 0) {
             throw new IllegalArgumentException("La cantidad de cada detalle debe ser mayor que cero");
@@ -338,18 +388,24 @@ public class FacturaService {
         }
     }
 
-    private String normalizarEstado(String estado, String valorPorDefecto) {
+    private String normalizarFiltroEstado(String estado) {
         if (!StringUtils.hasText(estado)) {
-            if (valorPorDefecto != null) {
-                return valorPorDefecto;
-            }
-            throw new IllegalArgumentException("El estado no puede estar vacío");
+            return null;
         }
         String normalizado = estado.trim().toUpperCase(Locale.ROOT);
         if (!List.of("EMITIDA", "PENDIENTE", "ANULADA").contains(normalizado)) {
             throw new IllegalArgumentException("El estado debe ser EMITIDA, PENDIENTE o ANULADA");
         }
         return normalizado;
+    }
+
+    private void validarPaginacion(int pagina, int tamanio) {
+        if (pagina < 0) {
+            throw new IllegalArgumentException("La página no puede ser negativa");
+        }
+        if (tamanio < 1 || tamanio > 100) {
+            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 100");
+        }
     }
 
     private RecursoNoEncontradoException noExiste(String recurso, Long id) {

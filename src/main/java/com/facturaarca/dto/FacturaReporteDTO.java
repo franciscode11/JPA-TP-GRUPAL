@@ -26,6 +26,36 @@ public class FacturaReporteDTO {
     private long cantidadItems;
     private String estado;
     private String observaciones;
+    private String cae;
+    private String resultadoArca;
+
+    public FacturaReporteDTO(
+            Long id,
+            Long numeroFactura,
+            Date fechaEmision,
+            String clienteDenominacion,
+            String condicionIva,
+            String puntoVentaDescripcion,
+            double importeTotal,
+            long cantidadItems,
+            String estado,
+            String observaciones,
+            String cae,
+            String resultadoArca
+    ) {
+        this.id = id;
+        this.numeroFactura = numeroFactura;
+        this.fechaEmision = fechaEmision;
+        this.clienteDenominacion = clienteDenominacion;
+        this.condicionIva = condicionIva;
+        this.puntoVentaDescripcion = limpiarNombrePuntoVenta(puntoVentaDescripcion);
+        this.importeTotal = importeTotal;
+        this.cantidadItems = cantidadItems;
+        this.estado = estado;
+        this.observaciones = observaciones;
+        this.cae = cae;
+        this.resultadoArca = resultadoArca;
+    }
 
     public FacturaReporteDTO(
             Long id,
@@ -39,16 +69,11 @@ public class FacturaReporteDTO {
             String estado,
             String observaciones
     ) {
-        this.id = id;
-        this.numeroFactura = numeroFactura;
-        this.fechaEmision = fechaEmision;
-        this.clienteDenominacion = clienteDenominacion;
-        this.condicionIva = condicionIva;
-        this.puntoVentaDescripcion = limpiarNombrePuntoVenta(puntoVentaDescripcion);
-        this.importeTotal = importeTotal;
-        this.cantidadItems = cantidadItems;
-        this.estado = estado;
-        this.observaciones = observaciones;
+        this(
+                id, numeroFactura, fechaEmision, clienteDenominacion, condicionIva,
+                puntoVentaDescripcion, importeTotal, cantidadItems, estado, observaciones,
+                null, null
+        );
     }
 
     private static String limpiarNombrePuntoVenta(String nombre) {

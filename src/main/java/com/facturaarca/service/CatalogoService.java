@@ -1,13 +1,16 @@
 package com.facturaarca.service;
 
 import com.facturaarca.dto.CatalogosDTO;
+import com.facturaarca.dto.PaginaDTO;
 import com.facturaarca.repository.ClienteRepository;
 import com.facturaarca.repository.CondicionIvaRepository;
 import com.facturaarca.repository.ListaPrecioArticuloRepository;
+import com.facturaarca.repository.ListaPrecioRepository;
 import com.facturaarca.repository.PuntoVentaRepository;
 import com.facturaarca.repository.TipoMonedaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,19 +25,22 @@ public class CatalogoService {
     private final PuntoVentaRepository puntoVentaRepository;
     private final TipoMonedaRepository tipoMonedaRepository;
     private final ListaPrecioArticuloRepository listaPrecioArticuloRepository;
+    private final ListaPrecioRepository listaPrecioRepository;
 
     public CatalogoService(
             ClienteRepository clienteRepository,
             CondicionIvaRepository condicionIvaRepository,
             PuntoVentaRepository puntoVentaRepository,
             TipoMonedaRepository tipoMonedaRepository,
-            ListaPrecioArticuloRepository listaPrecioArticuloRepository
+            ListaPrecioArticuloRepository listaPrecioArticuloRepository,
+            ListaPrecioRepository listaPrecioRepository
     ) {
         this.clienteRepository = clienteRepository;
         this.condicionIvaRepository = condicionIvaRepository;
         this.puntoVentaRepository = puntoVentaRepository;
         this.tipoMonedaRepository = tipoMonedaRepository;
         this.listaPrecioArticuloRepository = listaPrecioArticuloRepository;
+        this.listaPrecioRepository = listaPrecioRepository;
     }
 
     @Transactional(readOnly = true)
@@ -78,20 +84,52 @@ public class CatalogoService {
                 opcion -> normalizar(opcion.nombre())
         );
 
-        List<CatalogosDTO.ArticuloCatalogoDTO> articulos = unicos(
-                listaPrecioArticuloRepository.findAllByOrderByArticuloDenominacionAsc().stream()
-                        .filter(precio -> !normalizar(precio.getArticulo().getDenominacion()).contains("sin ventas"))
-                        .map(precio -> new CatalogosDTO.ArticuloCatalogoDTO(
-                                precio.getArticulo().getId(),
-                                precio.getArticulo().getCodigo().trim(),
-                                precio.getArticulo().getDenominacion().trim(),
-                                precio.getPrecioVenta()
+        List<CatalogosDTO.OpcionCatalogoDTO> listasPrecio = unicos(
+                listaPrecioRepository.findAllByOrderByDenominacionAsc().stream()
+                        .map(lista -> new CatalogosDTO.OpcionCatalogoDTO(
+                                lista.getId(), lista.getDenominacion().trim()
                         ))
                         .toList(),
-                articulo -> normalizar(articulo.codigo())
+                opcion -> normalizar(opcion.nombre())
         );
 
-        return new CatalogosDTO(clientes, condiciones, puntosVenta, monedas, articulos);
+        return new CatalogosDTO(clientes, condiciones, puntosVenta, monedas, listasPrecio);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaDTO<CatalogosDTO.ArticuloCatalogoDTO> buscarArticulos(
+            Long listaPrecioId,
+            String texto,
+            int pagina,
+            int tamanio
+    ) {
+        validarPaginacion(pagina, tamanio);
+        String busqueda = texto == null ? "" : texto.trim();
+        var resultado = listaPrecioArticuloRepository.buscarParaExplorador(
+                listaPrecioId,
+                busqueda,
+                PageRequest.of(pagina, tamanio)
+        );
+        List<CatalogosDTO.ArticuloCatalogoDTO> contenido = resultado.getContent().stream()
+                .map(precio -> new CatalogosDTO.ArticuloCatalogoDTO(
+                        precio.getId(),
+                        precio.getArticulo().getId(),
+                        precio.getArticulo().getCodigo().trim(),
+                        precio.getArticulo().getDenominacion().trim(),
+                        precio.getListaPrecio().getDenominacion().trim(),
+                        precio.getPrecioVenta()
+                ))
+                .toList();
+        return PaginaDTO.crear(contenido, pagina, tamanio, resultado.getTotalElements());
+    }
+
+    private static void validarPaginacion(int pagina, int tamanio) {
+        if (pagina < 0) {
+            throw new IllegalArgumentException("La página no puede ser negativa");
+        }
+        if (tamanio < 1 || tamanio > 50) {
+            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 50");
+        }
     }
 
     private static String limpiarSufijoCarga(String texto) {

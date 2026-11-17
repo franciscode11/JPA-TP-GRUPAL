@@ -1,5 +1,5 @@
 export interface FacturaDetalleRequestDTO {
-  articuloId: number;
+  listaPrecioArticuloId: number;
   cantidad: number;
   porcentajeBonificacion: number;
 }
@@ -11,7 +11,6 @@ export interface FacturaRequestDTO {
   condicionIvaId?: number;
   puntoVentaId?: number;
   tipoMonedaId?: number;
-  estado?: string;
   observaciones?: string;
   detalles?: FacturaDetalleRequestDTO[];
 }
@@ -27,9 +26,19 @@ export interface FacturaReporteDTO {
   cantidadItems: number;
   estado: string;
   observaciones: string | null;
+  cae: string | null;
+  resultadoArca: string | null;
 }
 
-export interface FacturaEdicionDTO extends FacturaRequestDTO {
+export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {
+  articuloId: number;
+  articuloCodigo: string;
+  articuloNombre: string;
+  listaPrecioNombre: string;
+  precioUnitario: number;
+}
+
+export interface FacturaEdicionDTO extends Omit<FacturaRequestDTO, "detalles"> {
   id: number;
   numeroFactura: number;
   fechaEmision: string;
@@ -38,7 +47,7 @@ export interface FacturaEdicionDTO extends FacturaRequestDTO {
   puntoVentaId: number;
   tipoMonedaId: number;
   estado: string;
-  detalles: FacturaDetalleRequestDTO[];
+  detalles: FacturaDetalleEdicionDTO[];
 }
 
 export interface FacturaFiltrosDTO {
@@ -46,6 +55,11 @@ export interface FacturaFiltrosDTO {
   fechaHasta?: string;
   estado?: string;
   montoMinimo?: number;
+  numeroFactura?: number;
+  clienteId?: number;
+  informadaArca?: boolean;
+  pagina?: number;
+  tamanio?: number;
 }
 
 export interface OpcionCatalogoDTO {
@@ -54,10 +68,28 @@ export interface OpcionCatalogoDTO {
 }
 
 export interface ArticuloCatalogoDTO {
-  id: number;
+  listaPrecioArticuloId: number;
+  articuloId: number;
   codigo: string;
   nombre: string;
+  listaPrecio: string;
   precio: number;
+}
+
+export interface PaginaDTO<T> {
+  contenido: T[];
+  pagina: number;
+  tamanio: number;
+  totalElementos: number;
+  totalPaginas: number;
+  primera: boolean;
+  ultima: boolean;
+}
+
+export interface ArcaEstadoDTO {
+  configurada: boolean;
+  ambiente: "HOMOLOGACIÓN";
+  mensaje: string;
 }
 
 export interface CatalogosDTO {
@@ -65,5 +97,5 @@ export interface CatalogosDTO {
   condicionesIva: OpcionCatalogoDTO[];
   puntosVenta: OpcionCatalogoDTO[];
   tiposMoneda: OpcionCatalogoDTO[];
-  articulos: ArticuloCatalogoDTO[];
+  listasPrecio: OpcionCatalogoDTO[];
 }

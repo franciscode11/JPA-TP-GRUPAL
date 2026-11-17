@@ -19,6 +19,8 @@ import com.facturaarca.repository.ListaPrecioArticuloRepository;
 import com.facturaarca.repository.PuntoVentaRepository;
 import com.facturaarca.repository.TipoMonedaRepository;
 import com.facturaarca.repository.UsuarioRepository;
+import com.facturaarca.arca.ArcaHomologacionClient;
+import com.facturaarca.model.ListaPrecio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +44,7 @@ class FacturaServiceTest {
     private final TipoMonedaRepository tipoMonedaRepository = mock(TipoMonedaRepository.class);
     private final ListaPrecioArticuloRepository precioRepository = mock(ListaPrecioArticuloRepository.class);
     private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+    private final ArcaHomologacionClient arcaClient = mock(ArcaHomologacionClient.class);
 
     private final FacturaService service = new FacturaService(
             facturaRepository,
@@ -51,7 +54,8 @@ class FacturaServiceTest {
             puntoVentaRepository,
             tipoMonedaRepository,
             precioRepository,
-            usuarioRepository
+            usuarioRepository,
+            arcaClient
     );
 
     @BeforeEach
@@ -85,8 +89,11 @@ class FacturaServiceTest {
         ListaPrecioArticulo precio = new ListaPrecioArticulo();
         precio.setId(7L);
         precio.setArticulo(articulo);
+        ListaPrecio lista = new ListaPrecio();
+        lista.setDenominacion("Minorista");
+        precio.setListaPrecio(lista);
         precio.setPrecioVenta(1000);
-        when(precioRepository.findFirstByArticuloIdOrderByIdDesc(6L)).thenReturn(Optional.of(precio));
+        when(precioRepository.findById(7L)).thenReturn(Optional.of(precio));
 
         when(facturaRepository.saveAndFlush(any(FacturaVenta.class))).thenAnswer(invocacion -> {
             FacturaVenta factura = invocacion.getArgument(0);
@@ -104,9 +111,8 @@ class FacturaServiceTest {
                 3L,
                 4L,
                 5L,
-                "EMITIDA",
                 "Venta web",
-                List.of(new FacturaDetalleRequestDTO(6L, 2d, 10d))
+                List.of(new FacturaDetalleRequestDTO(7L, 2d, 10d))
         );
 
         FacturaReporteDTO resultado = service.crear(request);
@@ -114,7 +120,7 @@ class FacturaServiceTest {
         assertThat(resultado.getId()).isEqualTo(8L);
         assertThat(resultado.getImporteTotal()).isEqualTo(2178d);
         assertThat(resultado.getCantidadItems()).isEqualTo(1);
-        assertThat(resultado.getEstado()).isEqualTo("EMITIDA");
+        assertThat(resultado.getEstado()).isEqualTo("PENDIENTE");
     }
 
     @Test

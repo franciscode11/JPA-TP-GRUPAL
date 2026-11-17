@@ -1,6 +1,7 @@
 package com.facturaarca.controller;
 
 import com.facturaarca.exception.RecursoNoEncontradoException;
+import com.facturaarca.arca.ArcaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,6 +27,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> manejarEstadoInvalido(IllegalStateException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(ArcaException.class)
+    public ResponseEntity<Map<String, String>> manejarErrorArca(ArcaException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("error", exception.getMessage()));
     }
 }

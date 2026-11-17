@@ -7,11 +7,18 @@ public record CatalogosDTO(
         List<OpcionCatalogoDTO> condicionesIva,
         List<OpcionCatalogoDTO> puntosVenta,
         List<OpcionCatalogoDTO> tiposMoneda,
-        List<ArticuloCatalogoDTO> articulos
+        List<OpcionCatalogoDTO> listasPrecio
 ) {
     public record OpcionCatalogoDTO(Long id, String nombre) {
     }
 
-    public record ArticuloCatalogoDTO(Long id, String codigo, String nombre, double precio) {
+    public record ArticuloCatalogoDTO(
+            Long listaPrecioArticuloId,
+            Long articuloId,
+            String codigo,
+            String nombre,
+            String listaPrecio,
+            double precio
+    ) {
     }
 }

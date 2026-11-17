@@ -41,3 +41,13 @@ build/
 
 ### Frontend ###
 frontend/node_modules/
+
+### Credenciales ARCA ###
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+ticket-*.properties
+.env

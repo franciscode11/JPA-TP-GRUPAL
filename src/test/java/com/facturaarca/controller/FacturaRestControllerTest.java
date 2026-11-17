@@ -2,7 +2,9 @@ package com.facturaarca.controller;
 
 import com.facturaarca.dto.FacturaDetalleRequestDTO;
 import com.facturaarca.dto.FacturaEdicionDTO;
+import com.facturaarca.dto.FacturaDetalleEdicionDTO;
 import com.facturaarca.dto.FacturaReporteDTO;
+import com.facturaarca.dto.PaginaDTO;
 import com.facturaarca.service.FacturaReporteExportService;
 import com.facturaarca.service.FacturaService;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -48,8 +51,9 @@ class FacturaRestControllerTest {
                 "IVA Responsable Inscripto", "Sucursal Central", 1500, 2,
                 "EMITIDA", null
         );
-        when(facturaService.buscarFacturasFiltradas(any(), any(), eq("EMITIDA"), eq(1000d)))
-                .thenReturn(List.of(dto));
+        when(facturaService.buscarFacturasPaginadas(
+                any(), any(), eq("EMITIDA"), eq(1000d), any(), any(), any(), anyInt(), anyInt()
+        )).thenReturn(PaginaDTO.crear(List.of(dto), 0, 10, 1));
 
         mockMvc.perform(get("/api/facturas")
                         .param("fechaDesde", "2026-03-01")
@@ -58,16 +62,17 @@ class FacturaRestControllerTest {
                         .param("montoMinimo", "1000"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
-                .andExpect(jsonPath("$[0].numeroFactura").value(1001))
-                .andExpect(jsonPath("$[0].fechaEmision").value("2026-03-15"))
-                .andExpect(jsonPath("$[0].cantidadItems").value(2));
+                .andExpect(jsonPath("$.contenido[0].numeroFactura").value(1001))
+                .andExpect(jsonPath("$.contenido[0].fechaEmision").value("2026-03-15"))
+                .andExpect(jsonPath("$.contenido[0].cantidadItems").value(2))
+                .andExpect(jsonPath("$.totalElementos").value(1));
     }
 
     @Test
     void creaUnaFacturaYDevuelve201() throws Exception {
         FacturaReporteDTO creada = new FacturaReporteDTO(
                 7L, 1001L, fecha(2026, 3, 15), "Cliente de prueba",
-                "Consumidor Final", "Casa Central", 1210, 1, "EMITIDA", null
+                "Consumidor Final", "Casa Central", 1210, 1, "PENDIENTE", null
         );
         when(facturaService.crear(any())).thenReturn(creada);
 
@@ -86,14 +91,16 @@ class FacturaRestControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/facturas/7"))
-                .andExpect(jsonPath("$.estado").value("EMITIDA"));
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
     }
 
     @Test
     void devuelveTodosLosDatosNecesariosParaEditar() throws Exception {
         FacturaEdicionDTO factura = new FacturaEdicionDTO(
                 7L, 1001L, fecha(2026, 3, 15), 2L, 5L, 1L, 1L,
-                "EMITIDA", "Entrega acordada", List.of(new FacturaDetalleRequestDTO(9L, 2d, 10d))
+                "PENDIENTE", "Entrega acordada", List.of(new FacturaDetalleEdicionDTO(
+                        9L, 10L, "ART-9", "Teclado", "Minorista", 1000, 2d, 10d
+                ))
         );
         when(facturaService.obtenerParaEdicion(7L)).thenReturn(factura);
 
@@ -101,7 +108,7 @@ class FacturaRestControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.numeroFactura").value(1001))
                 .andExpect(jsonPath("$.clienteId").value(2))
-                .andExpect(jsonPath("$.detalles[0].articuloId").value(9));
+                .andExpect(jsonPath("$.detalles[0].listaPrecioArticuloId").value(9));
     }
 
     @Test
@@ -127,7 +134,9 @@ class FacturaRestControllerTest {
 
     @Test
     void descargaElPdfConNombreDeArchivo() throws Exception {
-        when(facturaService.buscarFacturasFiltradas(null, null, null, null)).thenReturn(List.of());
+        when(facturaService.buscarFacturasFiltradas(
+                null, null, null, null, null, null, null
+        )).thenReturn(List.of());
         when(exportService.generarPdf(List.of())).thenReturn("%PDF".getBytes());
 
         mockMvc.perform(get("/api/facturas/reporte.pdf"))

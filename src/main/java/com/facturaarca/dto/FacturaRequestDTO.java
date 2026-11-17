@@ -24,7 +24,6 @@ public class FacturaRequestDTO {
     private Long condicionIvaId;
     private Long puntoVentaId;
     private Long tipoMonedaId;
-    private String estado;
     private String observaciones;
     private List<FacturaDetalleRequestDTO> detalles;
 }

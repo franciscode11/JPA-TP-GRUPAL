@@ -3,6 +3,7 @@ package com.facturaarca.controller;
 import com.facturaarca.dto.FacturaReporteDTO;
 import com.facturaarca.dto.FacturaEdicionDTO;
 import com.facturaarca.dto.FacturaRequestDTO;
+import com.facturaarca.dto.PaginaDTO;
 import com.facturaarca.service.FacturaReporteExportService;
 import com.facturaarca.service.FacturaService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -43,13 +44,21 @@ public class FacturaRestController {
     }
 
     @GetMapping
-    public List<FacturaReporteDTO> buscarFacturas(
+    public PaginaDTO<FacturaReporteDTO> buscarFacturas(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) Double montoMinimo
+            @RequestParam(required = false) Double montoMinimo,
+            @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Boolean informadaArca,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamanio
     ) {
-        return facturaService.buscarFacturasFiltradas(fechaDesde, fechaHasta, estado, montoMinimo);
+        return facturaService.buscarFacturasPaginadas(
+                fechaDesde, fechaHasta, estado, montoMinimo,
+                numeroFactura, clienteId, informadaArca, pagina, tamanio
+        );
     }
 
     @PostMapping
@@ -71,6 +80,11 @@ public class FacturaRestController {
         return ResponseEntity.ok(facturaService.actualizar(id, request));
     }
 
+    @PostMapping("/{id}/emitir")
+    public ResponseEntity<FacturaReporteDTO> emitirEnArca(@PathVariable Long id) {
+        return ResponseEntity.ok(facturaService.emitirEnArca(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarFactura(@PathVariable Long id) {
         facturaService.eliminar(id);
@@ -82,10 +96,13 @@ public class FacturaRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) Double montoMinimo
+            @RequestParam(required = false) Double montoMinimo,
+            @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaDesde, fechaHasta, estado, montoMinimo
+                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
         );
         return archivo(exportService.generarPdf(facturas), PDF, "reporte-facturas.pdf");
     }
@@ -95,10 +112,13 @@ public class FacturaRestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) Double montoMinimo
+            @RequestParam(required = false) Double montoMinimo,
+            @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaDesde, fechaHasta, estado, montoMinimo
+                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
         );
         return archivo(exportService.generarExcel(facturas), XLSX, "reporte-facturas.xlsx");
     }

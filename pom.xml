@@ -21,6 +21,7 @@
         <java.version>17</java.version>
         <openpdf.version>2.0.3</openpdf.version>
         <poi.version>5.4.1</poi.version>
+        <bouncycastle.version>1.81</bouncycastle.version>
     </properties>
 
     <dependencies>
@@ -60,6 +61,16 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

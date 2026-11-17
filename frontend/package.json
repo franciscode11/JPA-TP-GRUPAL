@@ -3,10 +3,14 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "tsc",
+    "copy-icons": "mkdir -p ../src/main/resources/static/vendor && cp node_modules/lucide/dist/umd/lucide.min.js ../src/main/resources/static/vendor/lucide.min.js",
+    "build": "npm run copy-icons && tsc",
     "check": "tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "lucide": "^1.74.0"
   }
 }

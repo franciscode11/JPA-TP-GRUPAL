@@ -1,53 +1,59 @@
-import { FacturaService } from "./FacturaService.js";
+import { FacturaService } from "./FacturaApiService.js";
 import type {
+  ArcaEstadoDTO,
   ArticuloCatalogoDTO,
   CatalogosDTO,
-  FacturaDetalleRequestDTO,
   FacturaFiltrosDTO,
   FacturaReporteDTO,
   FacturaRequestDTO,
   OpcionCatalogoDTO,
+  PaginaDTO,
 } from "./models/factura.dto.js";
 
-type ItemFormulario = FacturaDetalleRequestDTO & { uid: number };
+declare global {
+  interface Window {
+    lucide?: { createIcons: (opciones?: Record<string, unknown>) => void };
+  }
+}
+
+type ItemFormulario = {
+  uid: number;
+  listaPrecioArticuloId: number;
+  articuloId: number;
+  codigo: string;
+  nombre: string;
+  listaPrecio: string;
+  precio: number;
+  cantidad: number;
+  porcentajeBonificacion: number;
+};
+
+type Confirmacion = {
+  tipo: string;
+  titulo: string;
+  descripcion: string;
+  confirmar: string;
+  accion: "eliminar" | "emitir";
+};
 
 const servicio = new FacturaService();
 let catalogos: CatalogosDTO;
+let estadoArca: ArcaEstadoDTO;
 let items: ItemFormulario[] = [];
 let siguienteUid = 1;
-let siguienteSelectorId = 1;
 let facturaEditandoId: number | null = null;
-
-const buscarFormulario = document.querySelector<HTMLFormElement>("#filtros-form")!;
-const altaFormulario = document.querySelector<HTMLFormElement>("#factura-form")!;
-const detalleCuerpo = document.querySelector<HTMLTableSectionElement>("#detalle-body")!;
-const facturasCuerpo = document.querySelector<HTMLTableSectionElement>("#facturas-body")!;
-const estadoCarga = document.querySelector<HTMLElement>("#estado-carga")!;
-const contador = document.querySelector<HTMLElement>("#contador-resultados")!;
-const totalVista = document.querySelector<HTMLElement>("#total-vista")!;
-const aviso = document.querySelector<HTMLElement>("#aviso")!;
-const seccionAlta = document.querySelector<HTMLElement>("#seccion-alta")!;
-const mostrarFactura = document.querySelector<HTMLButtonElement>("#mostrar-factura")!;
-const cerrarFactura = document.querySelector<HTMLButtonElement>("#cerrar-factura")!;
-const descargarPdf = document.querySelector<HTMLAnchorElement>("#descargar-pdf")!;
-const descargarExcel = document.querySelector<HTMLAnchorElement>("#descargar-excel")!;
-const tituloAlta = document.querySelector<HTMLElement>("#titulo-alta")!;
-const modalConfirmacion = document.querySelector<HTMLDialogElement>("#modal-confirmacion")!;
-const modalTipo = document.querySelector<HTMLElement>("#modal-tipo")!;
-const modalTitulo = document.querySelector<HTMLElement>("#modal-titulo")!;
-const modalDescripcion = document.querySelector<HTMLElement>("#modal-descripcion")!;
-const modalCancelar = document.querySelector<HTMLButtonElement>("#modal-cancelar")!;
-const modalConfirmar = document.querySelector<HTMLButtonElement>("#modal-confirmar")!;
-const modalIcono = document.querySelector<HTMLElement>("#modal-icono")!;
-const modalIconoGrafico = document.querySelector<HTMLElement>("#modal-icono-grafico")!;
+let paginaFacturas = 0;
+let paginaArticulos = 0;
+let ultimaPaginaArticulos: PaginaDTO<ArticuloCatalogoDTO> | null = null;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
+let temporizadorBusqueda: number | undefined;
 
-function elemento<T extends HTMLElement>(id: string): T {
-  return document.querySelector<T>(`#${id}`)!;
+function elemento<T extends HTMLElement>(selector: string): T {
+  return document.querySelector<T>(selector)!;
 }
 
 function valor(id: string): string {
-  return elemento<HTMLInputElement | HTMLSelectElement>(id).value;
+  return elemento<HTMLInputElement | HTMLSelectElement>(`#${id}`).value;
 }
 
 function numero(texto: string): number {
@@ -68,15 +74,19 @@ function escapar(texto: string | null | undefined): string {
   return nodo.innerHTML;
 }
 
+function renderizarIconos(): void {
+  window.lucide?.createIcons({ attrs: { "stroke-width": 1.8, "aria-hidden": "true" } });
+}
+
 function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
+  const aviso = elemento<HTMLElement>("#aviso");
   aviso.textContent = mensaje;
   aviso.className = `aviso visible ${tipo}`;
-  window.setTimeout(() => aviso.classList.remove("visible"), 3800);
+  window.setTimeout(() => aviso.classList.remove("visible"), 4200);
 }
 
 function personalizarFecha(input: HTMLInputElement): void {
   if (input.closest(".fecha-personalizada")) return;
-
   const contenedor = document.createElement("div");
   contenedor.className = "fecha-personalizada";
   input.before(contenedor);
@@ -85,73 +95,12 @@ function personalizarFecha(input: HTMLInputElement): void {
   const boton = document.createElement("button");
   boton.type = "button";
   boton.className = "fecha-boton";
-  boton.setAttribute("aria-label", `Abrir calendario de ${input.closest("label")?.textContent?.trim() || "fecha"}`);
-  boton.innerHTML = '<span class="icono-calendario" aria-hidden="true"></span>';
+  boton.setAttribute("aria-label", "Abrir calendario");
+  boton.innerHTML = '<i data-lucide="calendar-days"></i>';
   boton.addEventListener("click", () => {
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-    }
+    try { input.showPicker(); } catch { input.focus(); }
   });
   contenedor.append(boton);
-}
-
-function personalizarFechas(): void {
-  document.querySelectorAll<HTMLInputElement>('input.control[type="date"]').forEach(personalizarFecha);
-}
-
-function abrirFormularioFactura(): void {
-  seccionAlta.hidden = false;
-  mostrarFactura.setAttribute("aria-expanded", "true");
-  seccionAlta.scrollIntoView({ behavior: "auto", block: "start" });
-  elemento<HTMLInputElement>("numero-factura").focus({ preventScroll: true });
-}
-
-function ocultarFormularioFactura(devolverFoco = true): void {
-  seccionAlta.hidden = true;
-  mostrarFactura.setAttribute("aria-expanded", "false");
-  if (devolverFoco) mostrarFactura.focus();
-}
-
-type DatosConfirmacion = {
-  tipo: "Anular comprobante" | "Eliminar comprobante";
-  titulo: string;
-  descripcion: string;
-  etiquetaConfirmar: string;
-  accion: "anular" | "eliminar";
-};
-
-function pedirConfirmacion(datos: DatosConfirmacion): Promise<boolean> {
-  cerrarSelectores();
-  modalTipo.textContent = datos.tipo;
-  modalTitulo.textContent = datos.titulo;
-  modalDescripcion.textContent = datos.descripcion;
-  modalConfirmar.innerHTML = datos.accion === "eliminar"
-    ? `<span class="icono-basura" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`
-    : `<span class="icono-anular" aria-hidden="true"></span><span>${datos.etiquetaConfirmar}</span>`;
-  modalConfirmar.dataset.accion = datos.accion;
-  modalIcono.dataset.accion = datos.accion;
-  modalIconoGrafico.className = datos.accion === "eliminar" ? "icono-basura" : "icono-anular";
-  document.body.classList.add("modal-abierto");
-  modalConfirmacion.showModal();
-  modalCancelar.focus();
-
-  return new Promise((resolver) => {
-    resolverConfirmacion = resolver;
-  });
-}
-
-function cerrarConfirmacion(confirmada: boolean): void {
-  if (!modalConfirmacion.open) return;
-  modalConfirmacion.close();
-  document.body.classList.remove("modal-abierto");
-  resolverConfirmacion?.(confirmada);
-  resolverConfirmacion = undefined;
-}
-
-function opciones(datos: OpcionCatalogoDTO[]): string {
-  return datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 
 function cerrarSelectores(excepto?: HTMLElement): void {
@@ -165,32 +114,24 @@ function cerrarSelectores(excepto?: HTMLElement): void {
 }
 
 function posicionarMenu(trigger: HTMLButtonElement, menu: HTMLElement): void {
-  const rectangulo = trigger.getBoundingClientRect();
-  const margen = 8;
-  const espacioAbajo = window.innerHeight - rectangulo.bottom - margen;
-  const espacioArriba = rectangulo.top - margen;
-  const altoDeseado = Math.min(menu.scrollHeight, 240);
-  const abreHaciaArriba = espacioAbajo < Math.min(altoDeseado, 180) && espacioArriba > espacioAbajo;
-  const espacioDisponible = abreHaciaArriba ? espacioArriba : espacioAbajo;
-  const altoMenu = Math.max(96, Math.min(altoDeseado, espacioDisponible - 6));
-  const ancho = Math.min(rectangulo.width, window.innerWidth - margen * 2);
-  const izquierda = Math.min(Math.max(margen, rectangulo.left), window.innerWidth - ancho - margen);
-
-  menu.style.left = `${izquierda}px`;
-  menu.style.width = `${ancho}px`;
-  menu.style.maxHeight = `${altoMenu}px`;
-  menu.style.top = abreHaciaArriba
-    ? `${Math.max(margen, rectangulo.top - altoMenu - 6)}px`
-    : `${rectangulo.bottom + 6}px`;
+  const rect = trigger.getBoundingClientRect();
+  const margen = 10;
+  const espacioAbajo = window.innerHeight - rect.bottom - margen;
+  const espacioArriba = rect.top - margen;
+  const abreArriba = espacioAbajo < 190 && espacioArriba > espacioAbajo;
+  const maximo = Math.max(120, Math.min(260, (abreArriba ? espacioArriba : espacioAbajo) - 8));
+  menu.style.left = `${Math.max(margen, Math.min(rect.left, window.innerWidth - rect.width - margen))}px`;
+  menu.style.top = abreArriba ? "auto" : `${rect.bottom + 7}px`;
+  menu.style.bottom = abreArriba ? `${window.innerHeight - rect.top + 7}px` : "auto";
+  menu.style.width = `${Math.min(rect.width, window.innerWidth - margen * 2)}px`;
+  menu.style.maxHeight = `${maximo}px`;
 }
 
 function actualizarSelector(select: HTMLSelectElement, selector: HTMLElement): void {
   const trigger = selector.querySelector<HTMLButtonElement>(".selector-trigger")!;
   const texto = trigger.querySelector<HTMLElement>(".selector-valor")!;
   const menu = selector.querySelector<HTMLElement>(".selector-menu")!;
-  const seleccionada = select.selectedOptions[0];
-
-  texto.textContent = seleccionada?.textContent?.trim() || "Seleccionar";
+  texto.textContent = select.selectedOptions[0]?.textContent?.trim() || "Seleccionar";
   trigger.disabled = select.disabled;
   menu.innerHTML = "";
 
@@ -199,15 +140,14 @@ function actualizarSelector(select: HTMLSelectElement, selector: HTMLElement): v
     boton.type = "button";
     boton.className = "selector-opcion";
     boton.setAttribute("role", "option");
-    boton.textContent = opcion.textContent?.trim() || "";
-    boton.dataset.value = opcion.value;
     boton.setAttribute("aria-selected", String(opcion.selected));
+    boton.textContent = opcion.textContent?.trim() || "";
     boton.disabled = opcion.disabled;
     boton.addEventListener("click", () => {
       select.value = opcion.value;
       select.dispatchEvent(new Event("change", { bubbles: true }));
+      actualizarSelector(select, selector);
       cerrarSelectores();
-      if (select.isConnected) actualizarSelector(select, selector);
     });
     menu.append(boton);
   });
@@ -225,7 +165,6 @@ function personalizarSelector(select: HTMLSelectElement): void {
   select.before(selector);
   selector.append(select);
   select.classList.add("select-nativo");
-  select.hidden = true;
   select.tabIndex = -1;
 
   const trigger = document.createElement("button");
@@ -233,18 +172,12 @@ function personalizarSelector(select: HTMLSelectElement): void {
   trigger.className = "selector-trigger";
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
-  const etiqueta = select.closest("label")?.childNodes[0]?.textContent?.trim();
-  trigger.setAttribute("aria-label", select.getAttribute("aria-label") || etiqueta || "Seleccionar opción");
-  const texto = document.createElement("span");
-  texto.className = "selector-valor";
-  trigger.append(texto);
+  trigger.innerHTML = '<span class="selector-valor"></span><i data-lucide="chevron-down"></i>';
 
   const menu = document.createElement("div");
   menu.className = "selector-menu";
-  menu.id = `selector-menu-${siguienteSelectorId++}`;
   menu.setAttribute("role", "listbox");
   menu.hidden = true;
-  trigger.setAttribute("aria-controls", menu.id);
   selector.append(trigger, menu);
 
   trigger.addEventListener("click", () => {
@@ -257,222 +190,271 @@ function personalizarSelector(select: HTMLSelectElement): void {
   });
   trigger.addEventListener("keydown", (evento) => {
     if (evento.key === "Escape") cerrarSelectores();
-    if ((evento.key === "ArrowDown" || evento.key === "Enter" || evento.key === " ")
-        && !selector.classList.contains("abierto")) {
-      evento.preventDefault();
-      trigger.click();
-      menu.querySelector<HTMLButtonElement>(".selector-opcion:not(:disabled)")?.focus();
-    }
   });
-  select.addEventListener("change", () => {
-    if (select.isConnected) actualizarSelector(select, selector);
-  });
-  select.closest("label")?.addEventListener("click", (evento) => {
-    if ((evento.target as HTMLElement).closest(".selector-personalizado")) return;
-    evento.preventDefault();
-    trigger.focus();
-  });
+  select.addEventListener("change", () => actualizarSelector(select, selector));
   actualizarSelector(select, selector);
 }
 
-function personalizarSelectores(raiz: ParentNode = document): void {
+function personalizarControles(raiz: ParentNode = document): void {
+  raiz.querySelectorAll<HTMLInputElement>('input.control[type="date"]').forEach(personalizarFecha);
   raiz.querySelectorAll<HTMLSelectElement>("select.control").forEach(personalizarSelector);
+  renderizarIconos();
 }
 
-function cargarSelectores(): void {
-  elemento<HTMLSelectElement>("cliente-id").innerHTML = opciones(catalogos.clientes);
-  elemento<HTMLSelectElement>("condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
-  elemento<HTMLSelectElement>("punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
-  elemento<HTMLSelectElement>("tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
-  personalizarSelectores(altaFormulario);
+function opciones(datos: OpcionCatalogoDTO[], inicial?: string): string {
+  const primera = inicial === undefined ? "" : `<option value="">${escapar(inicial)}</option>`;
+  return primera + datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 
-function reiniciarFormularioFactura(): void {
+function cargarCatalogos(): void {
+  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes);
+  elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
+  elemento<HTMLSelectElement>("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
+  elemento<HTMLSelectElement>("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
+  elemento<HTMLSelectElement>("#filtro-cliente").innerHTML = opciones(catalogos.clientes, "Todos");
+  elemento<HTMLSelectElement>("#lista-precio-id").innerHTML = opciones(catalogos.listasPrecio, "Todas las listas");
+  personalizarControles(document);
+}
+
+function abrirFormulario(): void {
+  const seccion = elemento<HTMLElement>("#seccion-alta");
+  seccion.hidden = false;
+  requestAnimationFrame(() => seccion.classList.add("visible"));
+  elemento<HTMLButtonElement>("#mostrar-factura").setAttribute("aria-expanded", "true");
+  seccion.scrollIntoView({ behavior: "smooth", block: "start" });
+  elemento<HTMLInputElement>("#numero-factura").focus({ preventScroll: true });
+}
+
+function ocultarFormulario(): void {
+  const seccion = elemento<HTMLElement>("#seccion-alta");
+  seccion.classList.remove("visible");
+  window.setTimeout(() => { seccion.hidden = true; }, 180);
+  elemento<HTMLButtonElement>("#mostrar-factura").setAttribute("aria-expanded", "false");
+}
+
+function reiniciarFormulario(): void {
   facturaEditandoId = null;
-  tituloAlta.textContent = "Nueva factura";
-  elemento<HTMLButtonElement>("guardar-factura").textContent = "Emitir factura";
-  altaFormulario.reset();
-  elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
+  elemento<HTMLElement>("#titulo-alta").textContent = "Nueva factura";
+  elemento<HTMLFormElement>("#factura-form").reset();
+  elemento<HTMLInputElement>("#fecha-emision").valueAsDate = new Date();
   items = [];
-  agregarItem();
-  personalizarSelectores(altaFormulario);
+  renderizarDetalles();
+  actualizarBotonGuardar("Guardar pendiente", "save");
+  personalizarControles(elemento("#factura-form"));
 }
 
-async function cargarFacturaParaEditar(id: number): Promise<void> {
-  try {
-    const factura = await servicio.obtenerFactura(id);
-    if (factura.estado === "ANULADA") {
-      notificar("Las facturas anuladas se conservan como registro y no pueden editarse.", "error");
-      return;
-    }
-
-    facturaEditandoId = factura.id;
-    tituloAlta.textContent = `Editar factura #${factura.numeroFactura}`;
-    elemento<HTMLInputElement>("numero-factura").value = String(factura.numeroFactura);
-    elemento<HTMLInputElement>("fecha-emision").value = factura.fechaEmision;
-    elemento<HTMLSelectElement>("cliente-id").value = String(factura.clienteId);
-    elemento<HTMLSelectElement>("condicion-iva-id").value = String(factura.condicionIvaId);
-    elemento<HTMLSelectElement>("punto-venta-id").value = String(factura.puntoVentaId);
-    elemento<HTMLSelectElement>("tipo-moneda-id").value = String(factura.tipoMonedaId);
-    elemento<HTMLSelectElement>("estado-factura").value = factura.estado;
-    elemento<HTMLInputElement>("observaciones").value = factura.observaciones ?? "";
-    items = factura.detalles.map((detalle) => ({ ...detalle, uid: siguienteUid++ }));
-    renderizarDetalles();
-    personalizarSelectores(altaFormulario);
-    elemento<HTMLButtonElement>("guardar-factura").textContent = "Guardar cambios";
-    abrirFormularioFactura();
-  } catch (error) {
-    notificar((error as Error).message, "error");
-  }
-}
-
-function articuloPorId(id: number): ArticuloCatalogoDTO | undefined {
-  return catalogos.articulos.find((articulo) => articulo.id === id);
+function actualizarBotonGuardar(texto: string, icono: string): void {
+  const boton = elemento<HTMLButtonElement>("#guardar-factura");
+  boton.innerHTML = `<i data-lucide="${icono}"></i><span>${texto}</span>`;
+  renderizarIconos();
 }
 
 function subtotal(item: ItemFormulario): number {
-  const articulo = articuloPorId(item.articuloId);
-  if (!articulo) return 0;
-  const neto = item.cantidad * articulo.precio * (1 - item.porcentajeBonificacion / 100);
+  const neto = item.cantidad * item.precio * (1 - item.porcentajeBonificacion / 100);
   return neto * 1.21;
 }
 
 function renderizarDetalles(): void {
+  const cuerpo = elemento<HTMLTableSectionElement>("#detalle-body");
   if (items.length === 0) {
-    detalleCuerpo.innerHTML = '<tr><td colspan="6" class="tabla-vacia">Agregá al menos un artículo.</td></tr>';
-    totalVista.textContent = dinero(0);
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla-vacia">Todavía no agregaste artículos.</td></tr>';
+    elemento<HTMLElement>("#total-vista").textContent = dinero(0);
     return;
   }
 
-  detalleCuerpo.innerHTML = items.map((item) => {
-    const opcionesArticulos = catalogos.articulos.map((articulo) => `
-      <option value="${articulo.id}" ${articulo.id === item.articuloId ? "selected" : ""}>
-        ${escapar(articulo.codigo)} · ${escapar(articulo.nombre)}
-      </option>`).join("");
-    const articulo = articuloPorId(item.articuloId);
-    return `
-      <tr data-uid="${item.uid}">
-        <td><select class="control item-articulo" aria-label="Artículo">${opcionesArticulos}</select></td>
-        <td><input class="control item-cantidad" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.cantidad}" aria-label="Cantidad"></td>
-        <td><input class="control item-bonificacion" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
-        <td class="numero">${dinero(articulo?.precio ?? 0)}</td>
-        <td class="numero destacado">${dinero(subtotal(item))}</td>
-        <td><button class="boton-icono eliminar-item" type="button" aria-label="Quitar artículo">×</button></td>
-      </tr>`;
-  }).join("");
-
-  totalVista.textContent = dinero(items.reduce((total, item) => total + subtotal(item), 0));
-  personalizarSelectores(detalleCuerpo);
+  cuerpo.innerHTML = items.map((item) => `
+    <tr data-uid="${item.uid}">
+      <td><strong>${escapar(item.codigo)}</strong><small>${escapar(item.nombre)}</small></td>
+      <td>${escapar(item.listaPrecio)}</td>
+      <td><input class="control item-cantidad" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.cantidad}" aria-label="Cantidad"></td>
+      <td><input class="control item-bonificacion" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
+      <td class="numero">${dinero(item.precio)}</td>
+      <td class="numero destacado">${dinero(subtotal(item))}</td>
+      <td><button class="boton-icono eliminar-item" type="button" aria-label="Quitar artículo"><i data-lucide="trash-2"></i></button></td>
+    </tr>`).join("");
+  elemento<HTMLElement>("#total-vista").textContent = dinero(
+    items.reduce((total, item) => total + subtotal(item), 0),
+  );
+  renderizarIconos();
 }
 
-function agregarItem(): void {
-  const primerArticulo = catalogos.articulos[0];
-  if (!primerArticulo) {
-    notificar("No hay artículos con precio cargados.", "error");
-    return;
-  }
-  items.push({ uid: siguienteUid++, articuloId: primerArticulo.id, cantidad: 1, porcentajeBonificacion: 0 });
-  renderizarDetalles();
-}
-
-function sincronizarItem(evento: Event): void {
-  const control = evento.target as HTMLInputElement | HTMLSelectElement;
-  const fila = control.closest<HTMLTableRowElement>("tr[data-uid]");
-  if (!fila) return;
-  const item = items.find((actual) => actual.uid === Number(fila.dataset.uid));
-  if (!item) return;
-
-  if (control.classList.contains("item-articulo")) item.articuloId = Number(control.value);
-  if (control.classList.contains("item-cantidad")) item.cantidad = numero(control.value);
-  if (control.classList.contains("item-bonificacion")) item.porcentajeBonificacion = numero(control.value);
-  renderizarDetalles();
-}
-
-function actualizarNumerosItem(evento: Event): void {
+function actualizarDetalle(evento: Event): void {
   const control = evento.target as HTMLInputElement;
-  if (!control.classList.contains("item-cantidad")
-      && !control.classList.contains("item-bonificacion")) return;
   const fila = control.closest<HTMLTableRowElement>("tr[data-uid]");
-  if (!fila) return;
-  const item = items.find((actual) => actual.uid === Number(fila.dataset.uid));
+  const item = items.find((actual) => actual.uid === Number(fila?.dataset.uid));
   if (!item) return;
-
   if (control.classList.contains("item-cantidad")) item.cantidad = numero(control.value);
   if (control.classList.contains("item-bonificacion")) item.porcentajeBonificacion = numero(control.value);
-  const celdaSubtotal = fila.querySelector<HTMLElement>("td:nth-child(5)");
-  if (celdaSubtotal) celdaSubtotal.textContent = dinero(subtotal(item));
-  totalVista.textContent = dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
+  const celda = fila?.querySelector<HTMLElement>("td:nth-child(6)");
+  if (celda) celda.textContent = dinero(subtotal(item));
+  elemento<HTMLElement>("#total-vista").textContent = dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
 }
 
-function filtrosActuales(): FacturaFiltrosDTO {
-  const monto = valor("filtro-monto");
-  return {
+async function abrirExplorador(): Promise<void> {
+  const modal = elemento<HTMLDialogElement>("#modal-articulos");
+  paginaArticulos = 0;
+  document.body.classList.add("modal-abierto");
+  modal.showModal();
+  requestAnimationFrame(() => modal.classList.add("visible"));
+  await cargarArticulos();
+  elemento<HTMLInputElement>("#buscar-articulo").focus();
+}
+
+function cerrarExplorador(): void {
+  const modal = elemento<HTMLDialogElement>("#modal-articulos");
+  modal.classList.remove("visible");
+  window.setTimeout(() => modal.close(), 160);
+  document.body.classList.remove("modal-abierto");
+}
+
+async function cargarArticulos(): Promise<void> {
+  const contenedor = elemento<HTMLElement>("#articulos-resultados");
+  contenedor.innerHTML = '<div class="resultado-vacio">Buscando artículos...</div>';
+  try {
+    const lista = valor("lista-precio-id");
+    ultimaPaginaArticulos = await servicio.buscarArticulos(
+      lista ? Number(lista) : undefined,
+      valor("buscar-articulo"),
+      paginaArticulos,
+    );
+    renderizarArticulos(ultimaPaginaArticulos);
+  } catch (error) {
+    contenedor.innerHTML = `<div class="resultado-vacio error">${escapar((error as Error).message)}</div>`;
+  }
+}
+
+function renderizarArticulos(pagina: PaginaDTO<ArticuloCatalogoDTO>): void {
+  const contenedor = elemento<HTMLElement>("#articulos-resultados");
+  if (pagina.contenido.length === 0) {
+    contenedor.innerHTML = '<div class="resultado-vacio">No hay artículos para esta búsqueda.</div>';
+  } else {
+    contenedor.innerHTML = pagina.contenido.map((articulo) => `
+      <button class="articulo-resultado" type="button" data-precio-id="${articulo.listaPrecioArticuloId}">
+        <span><strong>${escapar(articulo.codigo)} · ${escapar(articulo.nombre)}</strong><small>${escapar(articulo.listaPrecio)}</small></span>
+        <span class="precio-articulo">${dinero(articulo.precio)}<i data-lucide="plus"></i></span>
+      </button>`).join("");
+  }
+  elemento<HTMLElement>("#articulos-pagina").textContent = pagina.totalPaginas === 0
+    ? "Sin resultados"
+    : `Página ${pagina.pagina + 1} de ${pagina.totalPaginas}`;
+  elemento<HTMLButtonElement>("#articulos-anterior").disabled = pagina.primera;
+  elemento<HTMLButtonElement>("#articulos-siguiente").disabled = pagina.ultima;
+  renderizarIconos();
+}
+
+function seleccionarArticulo(id: number): void {
+  const articulo = ultimaPaginaArticulos?.contenido.find((actual) => actual.listaPrecioArticuloId === id);
+  if (!articulo) return;
+  items.push({
+    uid: siguienteUid++,
+    listaPrecioArticuloId: articulo.listaPrecioArticuloId,
+    articuloId: articulo.articuloId,
+    codigo: articulo.codigo,
+    nombre: articulo.nombre,
+    listaPrecio: articulo.listaPrecio,
+    precio: articulo.precio,
+    cantidad: 1,
+    porcentajeBonificacion: 0,
+  });
+  renderizarDetalles();
+  cerrarExplorador();
+}
+
+function filtrosActuales(incluirPagina = true): FacturaFiltrosDTO {
+  const informada = valor("filtro-informada");
+  const filtros: FacturaFiltrosDTO = {
+    numeroFactura: valor("filtro-numero") ? numero(valor("filtro-numero")) : undefined,
     fechaDesde: valor("filtro-desde") || undefined,
     fechaHasta: valor("filtro-hasta") || undefined,
+    clienteId: valor("filtro-cliente") ? Number(valor("filtro-cliente")) : undefined,
     estado: valor("filtro-estado") || undefined,
-    montoMinimo: monto ? numero(monto) : undefined,
+    informadaArca: informada === "" ? undefined : informada === "true",
+    montoMinimo: valor("filtro-monto") ? numero(valor("filtro-monto")) : undefined,
   };
+  if (incluirPagina) {
+    filtros.pagina = paginaFacturas;
+    filtros.tamanio = 10;
+  }
+  return filtros;
 }
 
-function parametrosFiltros(filtros: FacturaFiltrosDTO): string {
+function queryFiltros(filtros: FacturaFiltrosDTO): string {
   const parametros = new URLSearchParams();
   Object.entries(filtros).forEach(([nombre, dato]) => {
     if (dato !== undefined && dato !== "") parametros.set(nombre, String(dato));
   });
-  return parametros.size > 0 ? `?${parametros.toString()}` : "";
+  return parametros.size ? `?${parametros}` : "";
 }
 
-function actualizarEnlacesDescarga(filtros: FacturaFiltrosDTO): void {
-  const query = parametrosFiltros(filtros);
-  descargarPdf.href = `/api/facturas/reporte.pdf${query}`;
-  descargarExcel.href = `/api/facturas/reporte.xlsx${query}`;
+function actualizarDescargas(): void {
+  const query = queryFiltros(filtrosActuales(false));
+  elemento<HTMLAnchorElement>("#descargar-pdf").href = `/api/facturas/reporte.pdf${query}`;
+  elemento<HTMLAnchorElement>("#descargar-excel").href = `/api/facturas/reporte.xlsx${query}`;
 }
 
-function renderizarFacturas(facturas: FacturaReporteDTO[]): void {
-  contador.textContent = `${facturas.length} ${facturas.length === 1 ? "comprobante" : "comprobantes"}`;
-  if (facturas.length === 0) {
-    facturasCuerpo.innerHTML = '<tr><td colspan="8" class="tabla-vacia">No hay comprobantes para los filtros elegidos.</td></tr>';
-    return;
+function accionesFactura(factura: FacturaReporteDTO): string {
+  if (factura.estado !== "PENDIENTE") {
+    const detalle = factura.cae ? `CAE ${escapar(factura.cae)}` : "Comprobante bloqueado";
+    return `<span class="accion-bloqueada"><i data-lucide="lock-keyhole"></i>${detalle}</span>`;
   }
+  const emitirDeshabilitado = !estadoArca?.configurada ? "disabled" : "";
+  const tituloEmitir = estadoArca?.configurada ? "Solicitar CAE en homologación" : escapar(estadoArca?.mensaje);
+  return `
+    <button class="boton-tabla emitir" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="${tituloEmitir}" ${emitirDeshabilitado}>
+      <i data-lucide="send"></i><span>Emitir ARCA</span>
+    </button>
+    <button class="boton-tabla editar" type="button" data-id="${factura.id}"><i data-lucide="pencil"></i><span>Editar</span></button>
+    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>`;
+}
 
-  facturasCuerpo.innerHTML = facturas.map((factura) => `
-    <tr>
-      <td><strong>#${String(factura.numeroFactura).padStart(8, "0")}</strong><small>${escapar(factura.condicionIva)}</small></td>
-      <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
-      <td>${escapar(factura.clienteDenominacion)}</td>
-      <td>${escapar(factura.puntoVentaDescripcion)}</td>
-      <td class="numero">${factura.cantidadItems}</td>
-      <td class="numero destacado">${dinero(factura.importeTotal)}</td>
-      <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
-      <td class="acciones">
-        <button class="boton-tabla editar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Editar los datos de la factura" ${factura.estado === "ANULADA" ? "disabled" : ""}>
-          <span class="icono-editar" aria-hidden="true"></span><span>Editar</span>
-        </button>
-        <button class="boton-tabla anular" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Conserva la factura y la marca como anulada" ${factura.estado === "ANULADA" ? "disabled" : ""}>Anular</button>
-        <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-numero="${factura.numeroFactura}" title="Borra la factura de forma permanente">
-          <span class="icono-basura" aria-hidden="true"></span><span>Eliminar</span>
-        </button>
-      </td>
-    </tr>`).join("");
+function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
+  elemento<HTMLElement>("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
+  const cuerpo = elemento<HTMLTableSectionElement>("#facturas-body");
+  if (pagina.contenido.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="8" class="tabla-vacia">No hay comprobantes para los filtros elegidos.</td></tr>';
+  } else {
+    cuerpo.innerHTML = pagina.contenido.map((factura) => `
+      <tr>
+        <td><strong>#${String(factura.numeroFactura).padStart(8, "0")}</strong><small>${escapar(factura.condicionIva)}</small></td>
+        <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
+        <td>${escapar(factura.clienteDenominacion)}</td>
+        <td>${escapar(factura.puntoVentaDescripcion)}</td>
+        <td class="numero">${factura.cantidadItems}</td>
+        <td class="numero destacado">${dinero(factura.importeTotal)}</td>
+        <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
+        <td class="acciones">${accionesFactura(factura)}</td>
+      </tr>`).join("");
+  }
+  elemento<HTMLElement>("#pagina-estado").textContent = pagina.totalPaginas === 0
+    ? "Sin resultados"
+    : `Página ${pagina.pagina + 1} de ${pagina.totalPaginas}`;
+  elemento<HTMLButtonElement>("#pagina-anterior").disabled = pagina.primera;
+  elemento<HTMLButtonElement>("#pagina-siguiente").disabled = pagina.ultima;
+  renderizarIconos();
 }
 
 async function cargarFacturas(): Promise<void> {
-  estadoCarga.classList.add("visible");
+  const carga = elemento<HTMLElement>("#estado-carga");
+  carga.classList.add("visible");
   try {
-    const filtros = filtrosActuales();
-    renderizarFacturas(await servicio.obtenerFacturas(filtros));
-    actualizarEnlacesDescarga(filtros);
+    const pagina = await servicio.obtenerFacturas(filtrosActuales());
+    renderizarFacturas(pagina);
+    actualizarDescargas();
   } catch (error) {
     notificar((error as Error).message, "error");
   } finally {
-    estadoCarga.classList.remove("visible");
+    carga.classList.remove("visible");
   }
 }
 
 async function guardarFactura(evento: SubmitEvent): Promise<void> {
   evento.preventDefault();
   if (items.length === 0) {
-    notificar("Agregá al menos un artículo a la factura.", "error");
+    notificar("Agregá al menos un artículo desde el maestro.", "error");
+    return;
+  }
+  if (items.some((item) => item.cantidad <= 0 || item.porcentajeBonificacion < 0 || item.porcentajeBonificacion > 100)) {
+    notificar("Revisá las cantidades y bonificaciones del detalle.", "error");
     return;
   }
 
@@ -483,67 +465,130 @@ async function guardarFactura(evento: SubmitEvent): Promise<void> {
     condicionIvaId: Number(valor("condicion-iva-id")),
     puntoVentaId: Number(valor("punto-venta-id")),
     tipoMonedaId: Number(valor("tipo-moneda-id")),
-    estado: valor("estado-factura"),
     observaciones: valor("observaciones"),
-    detalles: items.map(({ articuloId, cantidad, porcentajeBonificacion }) => ({
-      articuloId, cantidad, porcentajeBonificacion,
+    detalles: items.map(({ listaPrecioArticuloId, cantidad, porcentajeBonificacion }) => ({
+      listaPrecioArticuloId, cantidad, porcentajeBonificacion,
     })),
   };
 
-  const boton = elemento<HTMLButtonElement>("guardar-factura");
+  const boton = elemento<HTMLButtonElement>("#guardar-factura");
   boton.disabled = true;
-  boton.textContent = "Guardando…";
+  actualizarBotonGuardar("Guardando...", "loader-circle");
   try {
-    const guardada = facturaEditandoId === null
-      ? await servicio.crearFactura(request)
-      : await servicio.actualizarFactura(facturaEditandoId, request);
-    notificar(facturaEditandoId === null
-      ? `Factura #${guardada.numeroFactura} creada correctamente.`
-      : `Factura #${guardada.numeroFactura} actualizada correctamente.`);
-    reiniciarFormularioFactura();
+    const editando = facturaEditandoId !== null;
+    const guardada = editando
+      ? await servicio.actualizarFactura(facturaEditandoId!, request)
+      : await servicio.crearFactura(request);
+    notificar(editando
+      ? `Factura #${guardada.numeroFactura} actualizada.`
+      : `Factura #${guardada.numeroFactura} guardada como pendiente.`);
+    ocultarFormulario();
+    paginaFacturas = 0;
     await cargarFacturas();
-    ocultarFormularioFactura(false);
-    mostrarFactura.focus();
   } catch (error) {
     notificar((error as Error).message, "error");
   } finally {
     boton.disabled = false;
-    boton.textContent = facturaEditandoId === null ? "Emitir factura" : "Guardar cambios";
+    actualizarBotonGuardar(facturaEditandoId === null ? "Guardar pendiente" : "Guardar cambios", "save");
   }
+}
+
+async function cargarFacturaParaEditar(id: number): Promise<void> {
+  try {
+    const factura = await servicio.obtenerFactura(id);
+    if (factura.estado !== "PENDIENTE") {
+      notificar("Sólo las facturas pendientes pueden editarse.", "error");
+      return;
+    }
+    facturaEditandoId = factura.id;
+    elemento<HTMLElement>("#titulo-alta").textContent = `Editar factura #${factura.numeroFactura}`;
+    elemento<HTMLInputElement>("#numero-factura").value = String(factura.numeroFactura);
+    elemento<HTMLInputElement>("#fecha-emision").value = factura.fechaEmision;
+    elemento<HTMLSelectElement>("#cliente-id").value = String(factura.clienteId);
+    elemento<HTMLSelectElement>("#condicion-iva-id").value = String(factura.condicionIvaId);
+    elemento<HTMLSelectElement>("#punto-venta-id").value = String(factura.puntoVentaId);
+    elemento<HTMLSelectElement>("#tipo-moneda-id").value = String(factura.tipoMonedaId);
+    elemento<HTMLTextAreaElement>("#observaciones").value = factura.observaciones ?? "";
+    items = factura.detalles.map((detalle) => ({
+      uid: siguienteUid++,
+      listaPrecioArticuloId: detalle.listaPrecioArticuloId,
+      articuloId: detalle.articuloId,
+      codigo: detalle.articuloCodigo,
+      nombre: detalle.articuloNombre,
+      listaPrecio: detalle.listaPrecioNombre,
+      precio: detalle.precioUnitario,
+      cantidad: detalle.cantidad,
+      porcentajeBonificacion: detalle.porcentajeBonificacion,
+    }));
+    renderizarDetalles();
+    personalizarControles(elemento("#factura-form"));
+    actualizarBotonGuardar("Guardar cambios", "save");
+    abrirFormulario();
+  } catch (error) {
+    notificar((error as Error).message, "error");
+  }
+}
+
+function pedirConfirmacion(datos: Confirmacion): Promise<boolean> {
+  const modal = elemento<HTMLDialogElement>("#modal-confirmacion");
+  elemento<HTMLElement>(".modal-confirmacion .modal-tipo").textContent = datos.tipo;
+  elemento<HTMLElement>("#modal-titulo").textContent = datos.titulo;
+  elemento<HTMLElement>("#modal-descripcion").textContent = datos.descripcion;
+  const confirmar = elemento<HTMLButtonElement>("#modal-confirmar");
+  confirmar.className = `boton ${datos.accion === "eliminar" ? "peligro" : "primario"}`;
+  confirmar.innerHTML = `<i data-lucide="${datos.accion === "eliminar" ? "trash-2" : "send"}"></i><span>${datos.confirmar}</span>`;
+  elemento<HTMLElement>("#modal-icono").innerHTML = `<i data-lucide="${datos.accion === "eliminar" ? "trash-2" : "send"}"></i>`;
+  elemento<HTMLElement>("#modal-icono").dataset.accion = datos.accion;
+  document.body.classList.add("modal-abierto");
+  modal.showModal();
+  requestAnimationFrame(() => modal.classList.add("visible"));
+  renderizarIconos();
+  return new Promise((resolver) => { resolverConfirmacion = resolver; });
+}
+
+function cerrarConfirmacion(confirmada: boolean): void {
+  const modal = elemento<HTMLDialogElement>("#modal-confirmacion");
+  if (!modal.open) return;
+  modal.classList.remove("visible");
+  window.setTimeout(() => modal.close(), 160);
+  document.body.classList.remove("modal-abierto");
+  resolverConfirmacion?.(confirmada);
+  resolverConfirmacion = undefined;
 }
 
 async function accionFactura(evento: MouseEvent): Promise<void> {
   const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("button[data-id]");
   if (!boton) return;
   const id = Number(boton.dataset.id);
-  const numero = boton.dataset.numero ?? "";
+  if (boton.classList.contains("editar")) {
+    await cargarFacturaParaEditar(id);
+    return;
+  }
 
   try {
-    if (boton.classList.contains("editar")) {
-      await cargarFacturaParaEditar(id);
-      return;
-    } else if (boton.classList.contains("anular")) {
+    if (boton.classList.contains("emitir")) {
       const confirmada = await pedirConfirmacion({
-        tipo: "Anular comprobante",
-        titulo: `¿Anular la factura #${numero}?`,
-        descripcion: "La factura seguirá guardada y visible en el historial, pero quedará marcada como ANULADA.",
-        etiquetaConfirmar: "Sí, anular",
-        accion: "anular",
+        tipo: "Emitir en homologación",
+        titulo: `¿Solicitar CAE para la factura #${boton.dataset.numero}?`,
+        descripcion: "Se enviará a ARCA en el entorno de pruebas. Si ARCA la aprueba, quedará bloqueada y pasará a EMITIDA.",
+        confirmar: "Solicitar CAE",
+        accion: "emitir",
       });
       if (!confirmada) return;
-      await servicio.actualizarEstado(id, "ANULADA", "Anulada desde el panel web");
-      notificar("La factura quedó anulada.");
-    } else if (boton.classList.contains("eliminar")) {
+      const factura = await servicio.emitirEnArca(id);
+      notificar(`ARCA aprobó la factura. CAE ${factura.cae}.`);
+    }
+    if (boton.classList.contains("eliminar")) {
       const confirmada = await pedirConfirmacion({
-        tipo: "Eliminar comprobante",
-        titulo: `¿Eliminar la factura #${numero}?`,
-        descripcion: "La factura y todos sus renglones se borrarán de forma permanente. Esta acción no se puede deshacer.",
-        etiquetaConfirmar: "Eliminar definitivamente",
+        tipo: "Eliminar borrador",
+        titulo: `¿Eliminar la factura #${boton.dataset.numero}?`,
+        descripcion: "Se borrará el comprobante pendiente y todos sus renglones. Esta acción no se puede deshacer.",
+        confirmar: "Eliminar",
         accion: "eliminar",
       });
       if (!confirmada) return;
       await servicio.eliminarFactura(id);
-      notificar("La factura fue eliminada.");
+      notificar("La factura pendiente fue eliminada.");
     }
     await cargarFacturas();
   } catch (error) {
@@ -551,63 +596,100 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
   }
 }
 
+async function cargarEstadoArca(): Promise<void> {
+  estadoArca = await servicio.obtenerEstadoArca();
+  const panel = elemento<HTMLElement>("#estado-arca");
+  panel.classList.toggle("configurada", estadoArca.configurada);
+  elemento<HTMLElement>("#estado-arca-mensaje").textContent = estadoArca.mensaje;
+}
+
 function enlazarEventos(): void {
-  mostrarFactura.addEventListener("click", () => {
-    reiniciarFormularioFactura();
-    abrirFormularioFactura();
+  elemento<HTMLButtonElement>("#mostrar-factura").addEventListener("click", () => {
+    reiniciarFormulario();
+    abrirFormulario();
   });
-  cerrarFactura.addEventListener("click", () => ocultarFormularioFactura());
-  buscarFormulario.addEventListener("submit", (evento) => {
+  elemento<HTMLButtonElement>("#cerrar-factura").addEventListener("click", ocultarFormulario);
+  elemento<HTMLFormElement>("#filtros-form").addEventListener("submit", (evento) => {
     evento.preventDefault();
+    paginaFacturas = 0;
     void cargarFacturas();
   });
-  elemento<HTMLButtonElement>("limpiar-filtros").addEventListener("click", () => {
-    buscarFormulario.reset();
-    personalizarSelectores(buscarFormulario);
+  elemento<HTMLButtonElement>("#limpiar-filtros").addEventListener("click", () => {
+    elemento<HTMLFormElement>("#filtros-form").reset();
+    personalizarControles(elemento("#filtros-form"));
+    paginaFacturas = 0;
     void cargarFacturas();
   });
-  elemento<HTMLButtonElement>("agregar-item").addEventListener("click", agregarItem);
-  detalleCuerpo.addEventListener("input", actualizarNumerosItem);
-  detalleCuerpo.addEventListener("change", sincronizarItem);
-  detalleCuerpo.addEventListener("click", (evento) => {
+  elemento<HTMLButtonElement>("#pagina-anterior").addEventListener("click", () => {
+    paginaFacturas--;
+    void cargarFacturas();
+  });
+  elemento<HTMLButtonElement>("#pagina-siguiente").addEventListener("click", () => {
+    paginaFacturas++;
+    void cargarFacturas();
+  });
+  elemento<HTMLButtonElement>("#agregar-item").addEventListener("click", () => void abrirExplorador());
+  elemento<HTMLButtonElement>("#cerrar-articulos").addEventListener("click", cerrarExplorador);
+  elemento<HTMLSelectElement>("#lista-precio-id").addEventListener("change", () => {
+    paginaArticulos = 0;
+    void cargarArticulos();
+  });
+  elemento<HTMLInputElement>("#buscar-articulo").addEventListener("input", () => {
+    window.clearTimeout(temporizadorBusqueda);
+    temporizadorBusqueda = window.setTimeout(() => {
+      paginaArticulos = 0;
+      void cargarArticulos();
+    }, 220);
+  });
+  elemento<HTMLButtonElement>("#articulos-anterior").addEventListener("click", () => {
+    paginaArticulos--;
+    void cargarArticulos();
+  });
+  elemento<HTMLButtonElement>("#articulos-siguiente").addEventListener("click", () => {
+    paginaArticulos++;
+    void cargarArticulos();
+  });
+  elemento<HTMLElement>("#articulos-resultados").addEventListener("click", (evento) => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("[data-precio-id]");
+    if (boton) seleccionarArticulo(Number(boton.dataset.precioId));
+  });
+  elemento<HTMLTableSectionElement>("#detalle-body").addEventListener("input", actualizarDetalle);
+  elemento<HTMLTableSectionElement>("#detalle-body").addEventListener("click", (evento) => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>(".eliminar-item");
     const fila = boton?.closest<HTMLTableRowElement>("tr[data-uid]");
     if (!fila) return;
     items = items.filter((item) => item.uid !== Number(fila.dataset.uid));
     renderizarDetalles();
   });
-  altaFormulario.addEventListener("submit", (evento) => void guardarFactura(evento));
-  facturasCuerpo.addEventListener("click", (evento) => void accionFactura(evento));
-  modalCancelar.addEventListener("click", () => cerrarConfirmacion(false));
-  modalConfirmar.addEventListener("click", () => cerrarConfirmacion(true));
-  modalConfirmacion.addEventListener("cancel", (evento) => {
+  elemento<HTMLFormElement>("#factura-form").addEventListener("submit", (evento) => void guardarFactura(evento));
+  elemento<HTMLTableSectionElement>("#facturas-body").addEventListener("click", (evento) => void accionFactura(evento));
+  elemento<HTMLButtonElement>("#modal-cancelar").addEventListener("click", () => cerrarConfirmacion(false));
+  elemento<HTMLButtonElement>("#modal-confirmar").addEventListener("click", () => cerrarConfirmacion(true));
+  elemento<HTMLDialogElement>("#modal-confirmacion").addEventListener("cancel", (evento) => {
     evento.preventDefault();
     cerrarConfirmacion(false);
   });
-  modalConfirmacion.addEventListener("click", (evento) => {
-    if (evento.target === modalConfirmacion) cerrarConfirmacion(false);
+  elemento<HTMLDialogElement>("#modal-articulos").addEventListener("cancel", (evento) => {
+    evento.preventDefault();
+    cerrarExplorador();
   });
   document.addEventListener("click", (evento) => {
     if (!(evento.target as HTMLElement).closest(".selector-personalizado")) cerrarSelectores();
   });
-  document.addEventListener("wheel", (evento) => {
-    if (!(evento.target as HTMLElement).closest(".selector-menu")) cerrarSelectores();
-  }, { passive: true });
-  document.addEventListener("touchmove", (evento) => {
-    if (!(evento.target as HTMLElement).closest(".selector-menu")) cerrarSelectores();
-  }, { passive: true });
   window.addEventListener("resize", () => cerrarSelectores());
 }
 
 async function iniciar(): Promise<void> {
-  elemento<HTMLInputElement>("fecha-emision").valueAsDate = new Date();
   enlazarEventos();
-  personalizarFechas();
-  personalizarSelectores(buscarFormulario);
+  personalizarControles(document);
   try {
-    catalogos = await servicio.obtenerCatalogos();
-    cargarSelectores();
-    agregarItem();
+    [catalogos, estadoArca] = await Promise.all([
+      servicio.obtenerCatalogos(),
+      servicio.obtenerEstadoArca(),
+    ]);
+    cargarCatalogos();
+    await cargarEstadoArca();
+    reiniciarFormulario();
     await cargarFacturas();
   } catch (error) {
     notificar(`No se pudo iniciar la aplicación: ${(error as Error).message}`, "error");

@@ -1,15 +1,18 @@
 import type {
   CatalogosDTO,
+  ArcaEstadoDTO,
+  ArticuloCatalogoDTO,
   FacturaEdicionDTO,
   FacturaFiltrosDTO,
   FacturaReporteDTO,
   FacturaRequestDTO,
+  PaginaDTO,
 } from "./models/factura.dto.js";
 
 export class FacturaService {
   private readonly baseUrl = "/api/facturas";
 
-  async obtenerFacturas(filtros: FacturaFiltrosDTO): Promise<FacturaReporteDTO[]> {
+  async obtenerFacturas(filtros: FacturaFiltrosDTO): Promise<PaginaDTO<FacturaReporteDTO>> {
     const parametros = new URLSearchParams();
     Object.entries(filtros).forEach(([nombre, valor]) => {
       if (valor !== undefined && valor !== "") {
@@ -17,7 +20,7 @@ export class FacturaService {
       }
     });
     const query = parametros.size > 0 ? `?${parametros.toString()}` : "";
-    return this.solicitar<FacturaReporteDTO[]>(`${this.baseUrl}${query}`);
+    return this.solicitar<PaginaDTO<FacturaReporteDTO>>(`${this.baseUrl}${query}`);
   }
 
   async crearFactura(factura: FacturaRequestDTO): Promise<FacturaReporteDTO> {
@@ -40,16 +43,8 @@ export class FacturaService {
     });
   }
 
-  async actualizarEstado(
-    id: number,
-    estado: string,
-    observaciones?: string,
-  ): Promise<FacturaReporteDTO> {
-    return this.solicitar<FacturaReporteDTO>(`${this.baseUrl}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado, observaciones }),
-    });
+  async emitirEnArca(id: number): Promise<FacturaReporteDTO> {
+    return this.solicitar<FacturaReporteDTO>(`${this.baseUrl}/${id}/emitir`, { method: "POST" });
   }
 
   async eliminarFactura(id: number): Promise<void> {
@@ -58,6 +53,20 @@ export class FacturaService {
 
   async obtenerCatalogos(): Promise<CatalogosDTO> {
     return this.solicitar<CatalogosDTO>("/api/catalogos");
+  }
+
+  async buscarArticulos(
+    listaPrecioId: number | undefined,
+    texto: string,
+    pagina: number,
+  ): Promise<PaginaDTO<ArticuloCatalogoDTO>> {
+    const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: "8" });
+    if (listaPrecioId !== undefined) parametros.set("listaPrecioId", String(listaPrecioId));
+    return this.solicitar<PaginaDTO<ArticuloCatalogoDTO>>(`/api/catalogos/articulos?${parametros}`);
+  }
+
+  async obtenerEstadoArca(): Promise<ArcaEstadoDTO> {
+    return this.solicitar<ArcaEstadoDTO>("/api/arca/estado");
   }
 
   private async solicitar<T>(url: string, opciones?: RequestInit): Promise<T> {
