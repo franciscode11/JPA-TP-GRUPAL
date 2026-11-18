@@ -1,3 +1,4 @@
+import { paginarComprobante } from "./paginarComprobante.js";
 import { FacturaService } from "./FacturaApiService.js";
 import type {
   ArcaEstadoDTO,
@@ -772,6 +773,7 @@ async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
     </section>`;
   renderizarIconos();
   modal.showModal();
+  paginarComprobante(modal);
   modal.classList.add("visible");
 }
 

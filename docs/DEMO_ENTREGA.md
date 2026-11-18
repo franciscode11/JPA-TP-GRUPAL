@@ -1,6 +1,6 @@
 # Demostración de homologación
 
-El backend es Spring Boot. El frontend es HTML y TypeScript. Los datos se guardan en PostgreSQL.
+Guía de estudio y comandos de arranque: [Del borrador al comprobante](Guia_para_exponer_Factura_ARCA.pdf). Las [consultas de la demo](consulta_demo.sql) se pueden ejecutar en pgAdmin sobre facturacion_orm.
 
 1. Abrir el sistema en http://localhost:8080. La confirmación al emitir y la vista de la factura identifican el entorno de homologación.
 2. Buscar por número interno, cliente o fechas. Los filtros y la paginación se resuelven en el backend.
@@ -13,11 +13,11 @@ El backend es Spring Boot. El frontend es HTML y TypeScript. Los datos se guarda
 
 ## Prueba comprobada
 
-La demo local del 18/11/2026 tiene 27 comprobantes de ese día. Cinco tienen CAE de homologación y 22 quedaron pendientes. Hay cuatro clientes. La condición de IVA se completa al elegir uno.
+El recuento cambia al crear y emitir borradores. La última consulta de consulta_demo.sql muestra los comprobantes de cada estado y cuántos tienen CAE.
 
-Para mostrar la paginación, abrí la pestaña Red del navegador y pulsá **Página siguiente**. Cada clic solicita una página al servidor. PostgreSQL devuelve 10 filas para la primera, 10 para la segunda y 7 para la tercera. Los filtros se aplican antes del límite de filas.
+Para mostrar la paginación, abrí la pestaña Red del navegador y pulsá **Página siguiente**. Cada clic solicita una página al servidor. PostgreSQL devuelve como máximo diez filas por página. Los filtros se aplican antes del límite de filas.
 
-Para mostrar una emisión ya aprobada, buscá el número interno **73** y elegí **Ver factura**. En la grilla, cada comprobante tiene un número interno corto asignado por PostgreSQL al crear el borrador. El número persiste al emitir y la secuencia avanza aunque se elimine el último borrador. En la vista de la factura aparecen el número fiscal del punto de venta, el CAE y su vencimiento.
+Para mostrar una emisión ya aprobada, buscá el número interno **78** y elegí **Ver factura**. En la grilla, cada comprobante tiene un número interno corto asignado por PostgreSQL al crear el borrador. El número persiste al emitir y la secuencia avanza aunque se elimine el último borrador. En la vista de la factura aparecen el número fiscal del punto de venta, el CAE y su vencimiento.
 
 Para mostrar una emisión nueva, elegí un pendiente de la fecha admitida por ARCA. Antes de pedir CAE el servidor consulta el último número autorizado y su fecha para ese punto de venta y tipo de comprobante.
 
@@ -36,5 +36,4 @@ En las ventas locales de esta demo el emisor es monotributista y emite Factura C
 
 ## Alcance revisado
 
-Consignas visibles: HTML/TypeScript, Spring, conexión ARCA, filtros, paginación backend/frontend, exploradores de clientes y precios de artículos y bloqueo de comprobantes autorizados.
-La guía de 11 páginas explica cómo obtener el CAE; no solicita expresamente un PDF individual, Next.js, un sidebar ni altas de clientes/productos. Esas mejoras adicionales no se implementan como requisitos del profesor.
+La variante presentada integra ARCA en homologación, incluye filtros, exploradores y paginación y bloquea los comprobantes autorizados. El TP integrador actualizado especifica una variante con CAE simulado y anulación lógica de emitidas. En ambas se elimina físicamente un borrador. La página 9 de la guía compara los alcances y las diferencias de entrega.

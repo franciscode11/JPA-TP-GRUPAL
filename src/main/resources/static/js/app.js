@@ -1,3 +1,4 @@
+import { paginarComprobante } from "./paginarComprobante.js";
 import { FacturaService } from "./FacturaApiService.js";
 const servicio = new FacturaService();
 let catalogos;
@@ -714,6 +715,7 @@ async function mostrarComprobante(reporte) {
     </section>`;
     renderizarIconos();
     modal.showModal();
+    paginarComprobante(modal);
     modal.classList.add("visible");
 }
 function pedirConfirmacion(datos) {

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-11">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-12">
 </head>
 <body>
   <header class="encabezado">
@@ -151,12 +151,17 @@
       <article id="comprobante-contenido" aria-labelledby="comprobante-titulo"></article>
       <footer class="factura-pie">
         <p><i data-lucide="shield-check" aria-hidden="true"></i>Homologación · Sin validez fiscal</p>
+        <nav class="factura-navegacion" aria-label="Páginas del comprobante" hidden>
+          <button class="boton-tabla" data-anterior type="button" aria-label="Página anterior">‹</button>
+          <span role="status" aria-live="polite"></span>
+          <button class="boton-tabla" data-siguiente type="button" aria-label="Página siguiente">›</button>
+        </nav>
         <button id="cerrar-comprobante" class="boton secundario" type="button">Cerrar</button>
       </footer>
     </div>
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-11"></script>
+  <script type="module" src="/js/app.js?v=20261118-12"></script>
 </body>
 </html>

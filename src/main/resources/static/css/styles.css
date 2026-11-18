@@ -586,3 +586,39 @@ button.boton-cerrar, #cerrar-clientes, #cerrar-articulos, #cerrar-comprobante {
   .maestro-cabecera .modal-cabecera { margin-bottom: 6px; }
 }
 @media (max-height: 355px) { .modal-articulos { --filas: 1; } }
+
+/* El encabezado y el cierre acompañan cada página del comprobante. */
+body:has(#modal-comprobante[open]) { overflow: hidden; }
+#modal-comprobante { max-height: calc(100dvh - 20px); overflow: hidden; }
+#modal-comprobante [hidden] { display: none; }
+#modal-comprobante .modal-contenido { padding: clamp(12px, 2.4vh, 24px); }
+#comprobante-contenido { gap: clamp(8px, 1.8vh, 16px); }
+#modal-comprobante .factura-encabezado h2 span { display: inline-block; }
+#modal-comprobante .factura-datos { padding-top: 10px; }
+#modal-comprobante .factura-items { min-width: 0; width: 100%; }
+#modal-comprobante .factura-total { padding: 8px 14px; }
+#modal-comprobante .factura-pie { margin-top: 12px; padding-top: 10px; }
+.factura-navegacion { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: .78rem; white-space: nowrap; }
+.factura-navegacion button { font-size: 1.1rem; }
+@media (max-width: 680px) {
+  #modal-comprobante { width: calc(100vw - 12px); }
+  #modal-comprobante .factura-pie { gap: 6px; }
+  #modal-comprobante .factura-pie p { flex: 1; }
+  #modal-comprobante .factura-pie .boton { min-height: 32px; padding: 6px 9px; }
+}
+@media (max-width: 680px) {
+  #modal-comprobante .factura-items tbody tr { gap: 4px 12px; padding: 8px 10px; }
+  #modal-comprobante .factura-items tbody td[data-campo]::before { display: inline; margin-right: 5px; }
+  #modal-comprobante .factura-cliente small { display: inline; margin-right: 8px; }
+  #modal-comprobante .factura-datos { gap: 8px; }
+  #modal-comprobante .factura-pie p { min-width: 0; white-space: normal; }
+}
+@media (max-width: 360px) {
+  #modal-comprobante .factura-pie:has(nav:not([hidden])) { display: grid; grid-template-columns: 1fr auto; }
+  #modal-comprobante .factura-pie:has(nav:not([hidden])) p { grid-column: 1 / -1; }
+  .factura-navegacion { justify-self: start; }
+}
+#modal-comprobante:has(.factura-navegacion:not([hidden])) { height: min(760px, calc(100dvh - 20px)); }
+#modal-comprobante:has(.factura-navegacion:not([hidden])) .modal-contenido {
+  display: flex; flex-direction: column; justify-content: space-between; min-height: 100%;
+}
