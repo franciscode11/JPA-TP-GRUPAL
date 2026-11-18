@@ -131,6 +131,19 @@ class FacturaServiceTest {
     }
 
     @Test
+    void rechazaUnaCondicionDistintaDeLaRegistradaEnElCliente() {
+        CondicionIva registrada = new CondicionIva();
+        registrada.setId(99L);
+        registrada.setDenominacion("Responsable Monotributo");
+        clienteRepository.findById(2L).orElseThrow().setCondicionIva(registrada);
+        FacturaRequestDTO request = new FacturaRequestDTO(new Date(), 2L, 3L, 4L, 5L,
+                null, List.of(new FacturaDetalleRequestDTO(7L, 1d, 0d)));
+        assertThatThrownBy(() -> service.crear(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Responsable Monotributo");
+    }
+
+    @Test
     void rechazaUnMontoNegativo() {
         assertThatThrownBy(() -> service.buscarFacturasFiltradas(null, null, null, -1d))
                 .isInstanceOf(IllegalArgumentException.class)

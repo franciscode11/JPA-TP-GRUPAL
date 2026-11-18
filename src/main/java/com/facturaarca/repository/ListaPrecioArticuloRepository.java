@@ -23,7 +23,8 @@ public interface ListaPrecioArticuloRepository extends JpaRepository<ListaPrecio
     @Query("""
             SELECT precio
             FROM ListaPrecioArticulo precio
-            WHERE (:listaPrecioId IS NULL OR precio.listaPrecio.id = :listaPrecioId)
+            WHERE precio.fechaBaja IS NULL AND precio.articulo.fechaBaja IS NULL
+              AND (:listaPrecioId IS NULL OR precio.listaPrecio.id = :listaPrecioId)
               AND precio.id = (
                   SELECT MIN(otro.id)
                   FROM ListaPrecioArticulo otro

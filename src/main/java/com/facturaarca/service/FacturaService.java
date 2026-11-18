@@ -128,6 +128,7 @@ public class FacturaService {
         completarAuditoriaAlta(factura, usuario);
 
         reemplazarDetalles(factura, request.getDetalles());
+        validarCondicionDelCliente(factura);
         return convertirAReporte(facturaRepository.saveAndFlush(factura));
     }
 
@@ -209,6 +210,7 @@ public class FacturaService {
             reemplazarDetalles(factura, request.getDetalles());
         }
 
+        validarCondicionDelCliente(factura);
         factura.setFechaModificacion(new Date());
         factura.setUsuarioModificacion(obtenerUsuarioSistema());
         return convertirAReporte(facturaRepository.saveAndFlush(factura));
@@ -221,6 +223,7 @@ public class FacturaService {
             throw new IllegalStateException("La factura ya fue informada o no está pendiente");
         }
 
+        validarCondicionDelCliente(factura);
         ResultadoArca resultado = arcaClient.emitir(factura);
         factura.setResultadoAfip(resultado.resultado());
         factura.setMotivoRechazo(resultado.aprobado() ? null : resultado.mensaje());
@@ -246,6 +249,14 @@ public class FacturaService {
         }
         facturaRepository.delete(factura);
         facturaRepository.flush();
+    }
+
+    private void validarCondicionDelCliente(FacturaVenta factura) {
+        var condicion = factura.getCliente().getCondicionIva();
+        if (condicion != null && !condicion.getId().equals(factura.getCondicionIva().getId())) {
+            throw new IllegalArgumentException("La condición de IVA debe coincidir con la registrada para el cliente: "
+                    + condicion.getDenominacion());
+        }
     }
 
     private void aplicarCabecera(FacturaVenta factura, FacturaRequestDTO request) {

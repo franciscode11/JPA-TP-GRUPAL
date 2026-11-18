@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-4">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-6">
 </head>
 <body>
   <div class="barra-superior"></div>
@@ -52,6 +52,7 @@
           <button class="boton primario" type="submit"><i data-lucide="search" aria-hidden="true"></i><span>Buscar</span></button>
         </div>
       </form>
+      <p id="error-fechas" class="error-campo" role="alert" hidden>La fecha hasta debe ser igual o posterior a la fecha desde.</p>
       <div class="descargas">
         <span>Exportar búsqueda</span>
         <a id="descargar-pdf" class="enlace-descarga" href="/api/facturas/reporte.pdf"><i data-lucide="file-text" aria-hidden="true"></i>PDF</a>
@@ -71,7 +72,7 @@
         <div class="grilla cabecera-factura">
           <label>Fecha de emisión<input id="fecha-emision" type="hidden" data-calendario data-placeholder="Elegir fecha" required></label>
           <label>Cliente<select id="cliente-id" class="control" data-explorador hidden></select><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Elegir cliente</span><i data-lucide="search"></i></button></label>
-          <label>Condición IVA<select id="condicion-iva-id" class="control" required></select></label>
+          <label>Condición IVA del cliente<select id="condicion-iva-id" class="control" disabled></select></label>
           <label>Punto de venta<select id="punto-venta-id" class="control" required></select></label>
           <label>Moneda<select id="tipo-moneda-id" class="control" required></select></label>
           <label class="observaciones">Observaciones<textarea id="observaciones" class="control" maxlength="255" rows="3" placeholder="Información opcional"></textarea></label>
@@ -166,6 +167,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-5"></script>
+  <script type="module" src="/js/app.js?v=20261118-6"></script>
 </body>
 </html>

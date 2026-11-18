@@ -109,7 +109,7 @@ function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
   aviso.querySelector("button")?.addEventListener("click", () => aviso.classList.remove("visible"));
   renderizarIconos();
   window.clearTimeout(temporizadorAviso);
-  temporizadorAviso = window.setTimeout(() => aviso.classList.remove("visible"), 3000);
+  temporizadorAviso = window.setTimeout(() => aviso.classList.remove("visible"), 5000);
 }
 
 const MESES = [
@@ -184,7 +184,9 @@ function personalizarFecha(input: HTMLInputElement): void {
     const dias = Array.from({ length: primerDia }, () => '<span class="calendario-hueco"></span>');
     for (let dia = 1; dia <= totalDias; dia++) {
       const iso = fechaIso(new Date(anio, mes, dia));
-      dias.push(`<button type="button" class="calendario-dia${iso === seleccionado ? " seleccionado" : ""}${iso === hoy ? " hoy" : ""}" data-fecha="${iso}" aria-label="${dia} de ${MESES[mes]} de ${anio}">${dia}</button>`);
+      const fueraDeRango = (input.id === "filtro-hasta" && valor("filtro-desde") && iso < valor("filtro-desde"))
+        || (input.id === "filtro-desde" && valor("filtro-hasta") && iso > valor("filtro-hasta"));
+      dias.push(`<button type="button" class="calendario-dia${iso === seleccionado ? " seleccionado" : ""}${iso === hoy ? " hoy" : ""}" data-fecha="${iso}" aria-label="${dia} de ${MESES[mes]} de ${anio}" ${fueraDeRango ? "disabled" : ""}>${dia}</button>`);
     }
     panel.innerHTML = `
       <div class="calendario-cabecera">
@@ -323,7 +325,7 @@ function opciones(datos: OpcionCatalogoDTO[], inicial?: string): string {
 
 function cargarCatalogos(): void {
   elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Elegir cliente");
-  elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
+  elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva, "Se completa al elegir cliente");
   elemento<HTMLSelectElement>("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
   elemento<HTMLSelectElement>("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
   elemento<HTMLSelectElement>("#filtro-cliente").innerHTML = opciones(catalogos.clientes, "Todos");
@@ -351,8 +353,9 @@ function reiniciarFormulario(): void {
   facturaEditandoId = null;
   elemento<HTMLElement>("#titulo-alta").textContent = "Nueva factura";
   elemento<HTMLFormElement>("#factura-form").reset();
-  const condicionDefault = catalogos.condicionesIva.find(condicion => condicion.nombre === "Consumidor Final");
-  if (condicionDefault) elemento<HTMLSelectElement>("#condicion-iva-id").value = String(condicionDefault.id);
+  elemento<HTMLSelectElement>("#cliente-id").value = "";
+  elemento<HTMLSelectElement>("#condicion-iva-id").value = "";
+  elemento<HTMLSelectElement>("#condicion-iva-id").disabled = true;
   elemento<HTMLInputElement>("#fecha-emision").value = fechaIso(new Date());
   items = [];
   renderizarDetalles();
@@ -553,6 +556,11 @@ function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
 }
 
 async function cargarFacturas(): Promise<void> {
+  const desde = valor("filtro-desde");
+  const hasta = valor("filtro-hasta");
+  const errorFechas = elemento("#error-fechas");
+  errorFechas.hidden = !(desde && hasta && hasta < desde);
+  if (!errorFechas.hidden) return;
   const solicitud = ++solicitudFacturas;
   const carga = elemento<HTMLElement>("#estado-carga");
   carga.classList.add("visible");
@@ -579,6 +587,10 @@ async function guardarFactura(evento: SubmitEvent): Promise<void> {
   evento.preventDefault();
   if (!valor("cliente-id")) {
     notificar("Elegí un cliente desde el buscador.", "error");
+    return;
+  }
+  if (!valor("condicion-iva-id")) {
+    notificar("El cliente no tiene una condición de IVA registrada. Elegí un cliente con datos completos.", "error");
     return;
   }
   if (!valor("fecha-emision")) {
@@ -803,6 +815,11 @@ function enlazarEventos(): void {
     select.value = boton.dataset.cliente!;
     if (destinoCliente === "cliente-id" && boton.dataset.condicion) {
       elemento<HTMLSelectElement>("#condicion-iva-id").value = boton.dataset.condicion;
+      personalizarControles(elemento("#factura-form"));
+    }
+    if (destinoCliente === "cliente-id") {
+      if (!boton.dataset.condicion) elemento<HTMLSelectElement>("#condicion-iva-id").value = "";
+      elemento<HTMLSelectElement>("#condicion-iva-id").disabled = true;
       personalizarControles(elemento("#factura-form"));
     }
     personalizarControles(select.parentElement!);

@@ -5,8 +5,8 @@ El backend es Spring Boot. El frontend es HTML y TypeScript. Los datos se guarda
 1. Abrir el sistema y comprobar que indica Homologación, sin validez fiscal.
 2. Buscar por número, cliente o fechas. Los filtros y la paginación se resuelven en el backend.
 3. Pulsar Nueva factura. La fecha se elige con calendario y el estado inicial es PENDIENTE.
-4. Buscar el cliente en el explorador, por nombre o CUIT. Elegir una condición de IVA que corresponda al receptor.
-5. Buscar un artículo en su lista de precios Mayorista o Minorista. Agregar cantidad y bonificación.
+4. Buscar el cliente en el explorador, por nombre o documento. Su condición de IVA se completa automáticamente y no se edita desde la factura.
+5. Buscar un producto Apple en su lista de precios Mayorista o Minorista. Agregar cantidad y bonificación. Los precios en pesos son orientativos para el laboratorio; los iPod son reacondicionados.
 6. Guardar el borrador. Se puede editar o eliminar mientras siga pendiente.
 7. Solicitar CAE en homologación. ARCA consulta y valida los datos; una respuesta rechazada conserva el borrador y muestra su motivo.
 8. Si ARCA aprueba, guardar número, CAE y vencimiento; bloquear edición y eliminación y abrir Ver factura.
