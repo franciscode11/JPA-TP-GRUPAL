@@ -479,12 +479,10 @@ async function cargarArticulos(): Promise<void> {
 
 function renderizarArticulos(pagina: PaginaDTO<ArticuloCatalogoDTO>): void {
   const contenedor = elemento<HTMLElement>("#articulos-resultados");
-  const disponibles = pagina.contenido.filter(articulo => !items.some(item =>
-    item.articuloId === articulo.articuloId || item.codigo.trim().toLowerCase() === articulo.codigo.trim().toLowerCase()));
-  if (disponibles.length === 0) {
+  if (pagina.contenido.length === 0) {
     contenedor.innerHTML = '<div class="resultado-vacio"><i data-lucide="package-x"></i><span>No hay artículos para esta búsqueda.</span></div>';
   } else {
-    contenedor.innerHTML = disponibles.map((articulo) => `
+    contenedor.innerHTML = pagina.contenido.map((articulo) => `
       <button class="articulo-resultado" type="button" data-precio-id="${articulo.listaPrecioArticuloId}">
         <span><strong title="${escapar(articulo.nombre)}">${escapar(articulo.nombre)}</strong><small>${escapar(articulo.codigo)} · ${escapar(articulo.listaPrecio)}</small></span>
         <span class="precio-articulo">${dinero(articulo.precio)}<i data-lucide="plus"></i></span>
