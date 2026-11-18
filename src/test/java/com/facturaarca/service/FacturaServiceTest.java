@@ -144,6 +144,26 @@ class FacturaServiceTest {
     }
 
     @Test
+    void validaLosLimitesEnAltasYEdiciones() {
+        var detalle = new FacturaDetalleRequestDTO(7L, 999d, 100d);
+        var valido = new FacturaRequestDTO(new Date(), 2L, 3L, 4L, 5L, "A".repeat(255), List.of(detalle));
+        assertThat(service.crear(valido).getImporteTotal()).isZero();
+
+        detalle.setCantidad(1010d);
+        assertThatThrownBy(() -> service.crear(valido)).hasMessageContaining("999");
+        assertThatThrownBy(() -> service.actualizar(8L, valido)).hasMessageContaining("999");
+        detalle.setCantidad(1d);
+        detalle.setPorcentajeBonificacion(Double.NaN);
+        assertThatThrownBy(() -> service.crear(valido)).hasMessageContaining("bonificación");
+        detalle.setPorcentajeBonificacion(0d);
+        valido.setObservaciones("B".repeat(256));
+        assertThatThrownBy(() -> service.actualizar(8L, valido)).hasMessageContaining("255");
+        valido.setObservaciones(null);
+        valido.setDetalles(java.util.Collections.nCopies(51, detalle));
+        assertThatThrownBy(() -> service.crear(valido)).hasMessageContaining("50 renglones");
+    }
+
+    @Test
     void rechazaUnMontoNegativo() {
         assertThatThrownBy(() -> service.buscarFacturasFiltradas(null, null, null, -1d))
                 .isInstanceOf(IllegalArgumentException.class)

@@ -59,8 +59,9 @@ export class FacturaService {
     listaPrecioId: number | undefined,
     texto: string,
     pagina: number,
+    tamanio: number,
   ): Promise<PaginaDTO<ArticuloCatalogoDTO>> {
-    const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: "8" });
+    const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: String(tamanio) });
     if (listaPrecioId !== undefined) parametros.set("listaPrecioId", String(listaPrecioId));
     return this.solicitar<PaginaDTO<ArticuloCatalogoDTO>>(`/api/catalogos/articulos?${parametros}`);
   }

@@ -83,8 +83,8 @@ public class FacturaService {
             int pagina,
             int tamanio
     ) {
-        validarFiltros(fechaDesde, fechaHasta, montoMinimo);
-        validarPaginacion(pagina, tamanio);
+        validarFiltros(fechaDesde, fechaHasta, montoMinimo, numeroInterno, numeroFactura, clienteId);
+        LimitesEntrada.paginacion(pagina, tamanio, 100);
         return facturaReporteRepository.buscarPagina(
                 fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
                 numeroFactura, numeroInterno, clienteId, informadaArca, pagina, tamanio
@@ -102,7 +102,7 @@ public class FacturaService {
             Long clienteId,
             Boolean informadaArca
     ) {
-        validarFiltros(fechaDesde, fechaHasta, montoMinimo);
+        validarFiltros(fechaDesde, fechaHasta, montoMinimo, numeroInterno, numeroFactura, clienteId);
         return facturaReporteRepository.buscarTodos(
                 fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
                 numeroFactura, numeroInterno, clienteId, informadaArca
@@ -120,6 +120,7 @@ public class FacturaService {
 
     @Transactional
     public FacturaReporteDTO crear(FacturaRequestDTO request) {
+        validarEntrada(request);
         validarCreacion(request);
 
         Usuario usuario = obtenerUsuarioSistema();
@@ -173,9 +174,7 @@ public class FacturaService {
 
     @Transactional
     public FacturaReporteDTO actualizar(Long id, FacturaRequestDTO request) {
-        if (request == null) {
-            throw new IllegalArgumentException("El cuerpo de la petición es obligatorio");
-        }
+        validarEntrada(request);
 
         FacturaVenta factura = buscarFactura(id, true);
 
@@ -280,7 +279,6 @@ public class FacturaService {
 
         BigDecimal total = BigDecimal.ZERO;
         for (FacturaDetalleRequestDTO request : detallesRequest) {
-            validarDetalle(request);
 
             ListaPrecioArticulo precioArticulo = listaPrecioArticuloRepository
                     .findById(request.getListaPrecioArticuloId())
@@ -317,7 +315,8 @@ public class FacturaService {
     }
 
     private FacturaVenta buscarFactura(Long id, boolean paraModificar) {
-        if (id == null || id <= 0) {
+        LimitesEntrada.identificador(id);
+        if (id == null) {
             throw new IllegalArgumentException("El ID de la factura debe ser válido");
         }
         return (paraModificar ? facturaRepository.findOneById(id) : facturaRepository.findById(id))
@@ -358,10 +357,25 @@ public class FacturaService {
         );
     }
 
-    private void validarCreacion(FacturaRequestDTO request) {
+    private void validarEntrada(FacturaRequestDTO request) {
         if (request == null) {
             throw new IllegalArgumentException("El cuerpo de la petición es obligatorio");
         }
+        LimitesEntrada.fecha(request.getFechaEmision());
+        LimitesEntrada.longitud(request.getObservaciones(), 255, "Observaciones");
+        LimitesEntrada.identificador(request.getClienteId());
+        LimitesEntrada.identificador(request.getPuntoVentaId());
+        LimitesEntrada.identificador(request.getCondicionIvaId());
+        LimitesEntrada.identificador(request.getTipoMonedaId());
+        if (request.getDetalles() != null) {
+            if (request.getDetalles().size() > 50) {
+                throw new IllegalArgumentException("Una factura admite hasta 50 renglones");
+            }
+            request.getDetalles().forEach(this::validarDetalle);
+        }
+    }
+
+    private void validarCreacion(FacturaRequestDTO request) {
         if (request.getFechaEmision() == null) {
             throw new IllegalArgumentException("La fecha de emisión es obligatoria");
         }
@@ -380,25 +394,33 @@ public class FacturaService {
         if (detalle == null || detalle.getListaPrecioArticuloId() == null) {
             throw new IllegalArgumentException("Cada detalle debe indicar un artículo de una lista de precios");
         }
-        if (detalle.getCantidad() == null || detalle.getCantidad() <= 0) {
-            throw new IllegalArgumentException("La cantidad de cada detalle debe ser mayor que cero");
+        LimitesEntrada.identificador(detalle.getListaPrecioArticuloId());
+        if (detalle.getCantidad() == null || !LimitesEntrada.decimalValido(detalle.getCantidad(), 0.01, 999)) {
+            throw new IllegalArgumentException("La cantidad debe estar entre 0,01 y 999, con hasta 2 decimales");
         }
         double bonificacion = valorOZero(detalle.getPorcentajeBonificacion());
-        if (bonificacion < 0 || bonificacion > 100) {
+        if (!LimitesEntrada.decimalValido(bonificacion, 0, 100)) {
             throw new IllegalArgumentException("La bonificación debe estar entre 0 y 100");
         }
     }
 
-    private void validarFiltros(Date fechaDesde, Date fechaHasta, Double montoMinimo) {
+    private void validarFiltros(Date fechaDesde, Date fechaHasta, Double montoMinimo,
+                                Long numeroInterno, Long numeroFactura, Long clienteId) {
+        LimitesEntrada.fecha(fechaDesde);
+        LimitesEntrada.fecha(fechaHasta);
+        LimitesEntrada.identificador(numeroInterno);
+        LimitesEntrada.identificador(numeroFactura);
+        LimitesEntrada.identificador(clienteId);
         if (fechaDesde != null && fechaHasta != null && fechaDesde.after(fechaHasta)) {
             throw new IllegalArgumentException("fechaDesde no puede ser posterior a fechaHasta");
         }
-        if (montoMinimo != null && montoMinimo < 0) {
-            throw new IllegalArgumentException("montoMinimo no puede ser negativo");
+        if (montoMinimo != null && !LimitesEntrada.decimalValido(montoMinimo, 0, 999_999_999_999.99)) {
+            throw new IllegalArgumentException("montoMinimo admite hasta 12 enteros y 2 decimales, desde cero");
         }
     }
 
     private String normalizarFiltroEstado(String estado) {
+        LimitesEntrada.longitud(estado, 12, "Estado");
         if (!StringUtils.hasText(estado)) {
             return null;
         }
@@ -407,15 +429,6 @@ public class FacturaService {
             throw new IllegalArgumentException("El estado debe ser EMITIDA, PENDIENTE o ANULADA");
         }
         return normalizado;
-    }
-
-    private void validarPaginacion(int pagina, int tamanio) {
-        if (pagina < 0) {
-            throw new IllegalArgumentException("La página no puede ser negativa");
-        }
-        if (tamanio < 1 || tamanio > 100) {
-            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 100");
-        }
     }
 
     private RecursoNoEncontradoException noExiste(String recurso, Long id) {

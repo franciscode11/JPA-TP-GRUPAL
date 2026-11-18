@@ -44,6 +44,8 @@ let siguienteUid = 1;
 let facturaEditandoId: number | null = null;
 let paginaFacturas = 0;
 let paginaArticulos = 0;
+let tamanioArticulos = 4;
+let solicitudArticulos = 0;
 let ultimaPaginaArticulos: PaginaDTO<ArticuloCatalogoDTO> | null = null;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 let temporizadorBusqueda: number | undefined;
@@ -191,9 +193,9 @@ function personalizarFecha(input: HTMLInputElement): void {
     }
     panel.innerHTML = `
       <div class="calendario-cabecera">
-        <button type="button" class="calendario-nav mes-anterior" aria-label="Mes anterior"><i data-lucide="chevron-left"></i></button>
+        <button type="button" class="calendario-nav mes-anterior" aria-label="Mes anterior" ${anio === 1900 && mes === 0 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>
         <strong>${MESES[mes]} ${anio}</strong>
-        <button type="button" class="calendario-nav mes-siguiente" aria-label="Mes siguiente"><i data-lucide="chevron-right"></i></button>
+        <button type="button" class="calendario-nav mes-siguiente" aria-label="Mes siguiente" ${anio === 2100 && mes === 11 ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>
       </div>
       <div class="calendario-semana">${DIAS.map((dia) => `<span>${dia}</span>`).join("")}</div>
       <div class="calendario-dias">${dias.join("")}</div>`;
@@ -388,8 +390,8 @@ function renderizarDetalles(): void {
     <tr data-uid="${item.uid}">
       <td><strong>${escapar(item.codigo)}</strong><small>${escapar(item.nombre)}</small></td>
       <td>${escapar(item.listaPrecio)}</td>
-      <td><input class="control item-cantidad" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.cantidad}" aria-label="Cantidad"></td>
-      <td><input class="control item-bonificacion" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
+      <td><input class="control item-cantidad" type="text" inputmode="decimal" maxlength="6" required pattern="[0-9]{1,3}([.,][0-9]{1,2})?" value="${item.cantidad}" aria-label="Cantidad"></td>
+      <td><input class="control item-bonificacion" type="text" inputmode="decimal" maxlength="6" required pattern="[0-9]{1,3}([.,][0-9]{1,2})?" value="${item.porcentajeBonificacion}" aria-label="Bonificación"></td>
       <td class="numero">${dinero(item.precio)}</td>
       <td class="numero destacado">${dinero(subtotal(item))}</td>
       <td><button class="boton-icono eliminar-item" type="button" aria-label="Quitar artículo"><i data-lucide="trash-2"></i></button></td>
@@ -405,11 +407,22 @@ function actualizarDetalle(evento: Event): void {
   const fila = control.closest<HTMLTableRowElement>("tr[data-uid]");
   const item = items.find((actual) => actual.uid === Number(fila?.dataset.uid));
   if (!item) return;
-  if (control.classList.contains("item-cantidad")) item.cantidad = numero(control.value);
-  if (control.classList.contains("item-bonificacion")) item.porcentajeBonificacion = numero(control.value);
+  const cantidad = control.classList.contains("item-cantidad");
+  const valor = numero(control.value);
+  const valido = control.value !== "" && !control.validity.patternMismatch && Number.isFinite(valor)
+    && (cantidad ? valor >= 0.01 && valor <= 999 : valor >= 0 && valor <= 100);
+  control.setCustomValidity(valido ? "" : cantidad
+    ? "Ingresá una cantidad entre 0,01 y 999, con hasta 2 decimales."
+    : "Ingresá una bonificación entre 0 y 100, con hasta 2 decimales.");
+  control.setAttribute("aria-invalid", String(!valido));
+  if (valido) {
+    if (cantidad) item.cantidad = valor;
+    else item.porcentajeBonificacion = valor;
+  }
   const celda = fila?.querySelector<HTMLElement>("td:nth-child(6)");
-  if (celda) celda.textContent = dinero(subtotal(item));
-  elemento<HTMLElement>("#total-vista").textContent = dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
+  if (celda) celda.textContent = fila?.querySelector("input:invalid") ? "—" : dinero(subtotal(item));
+  elemento("#total-vista").textContent = document.querySelector("#detalle-body input:invalid")
+    ? "—" : dinero(items.reduce((total, actual) => total + subtotal(actual), 0));
 }
 
 async function abrirExplorador(): Promise<void> {
@@ -418,30 +431,48 @@ async function abrirExplorador(): Promise<void> {
   document.body.classList.add("modal-abierto");
   modal.showModal();
   requestAnimationFrame(() => modal.classList.add("visible"));
+  tamanioArticulos = filasDelMaestro();
+  elemento<HTMLInputElement>("#buscar-articulo").focus({ preventScroll: true });
   await cargarArticulos();
-  elemento<HTMLInputElement>("#buscar-articulo").focus();
 }
 
 function cerrarExplorador(): void {
   const modal = elemento<HTMLDialogElement>("#modal-articulos");
   modal.classList.remove("visible");
-  window.setTimeout(() => modal.close(), 160);
+  modal.close();
+  ++solicitudArticulos;
+  window.clearTimeout(temporizadorBusqueda);
   document.body.classList.remove("modal-abierto");
 }
 
+function filasDelMaestro(): number {
+  return Number(getComputedStyle(elemento("#modal-articulos")).getPropertyValue("--filas"));
+}
+
 async function cargarArticulos(): Promise<void> {
-  const contenedor = elemento<HTMLElement>("#articulos-resultados");
-  contenedor.innerHTML = '<div class="resultado-vacio">Buscando artículos...</div>';
+  const solicitud = ++solicitudArticulos;
+  const cuerpo = elemento<HTMLElement>("#articulos-resultados");
+  cuerpo.setAttribute("aria-busy", "true");
+  cuerpo.inert = true;
+  elemento<HTMLButtonElement>("#articulos-anterior").disabled = true;
+  elemento<HTMLButtonElement>("#articulos-siguiente").disabled = true;
   try {
     const lista = valor("lista-precio-id");
-    ultimaPaginaArticulos = await servicio.buscarArticulos(
-      lista ? Number(lista) : undefined,
-      valor("buscar-articulo"),
-      paginaArticulos,
-    );
-    renderizarArticulos(ultimaPaginaArticulos);
+    const pagina = await servicio.buscarArticulos(lista ? Number(lista) : undefined,
+      valor("buscar-articulo"), paginaArticulos, tamanioArticulos);
+    if (solicitud !== solicitudArticulos) return;
+    ultimaPaginaArticulos = pagina;
+    renderizarArticulos(pagina);
   } catch (error) {
-    contenedor.innerHTML = `<div class="resultado-vacio error">${escapar((error as Error).message)}</div>`;
+    if (solicitud !== solicitudArticulos) return;
+    ultimaPaginaArticulos = null;
+    cuerpo.innerHTML = `<div class="resultado-vacio error">${escapar((error as Error).message)}</div>`;
+    elemento("#articulos-pagina").textContent = "Sin datos";
+  } finally {
+    if (solicitud === solicitudArticulos) {
+      cuerpo.inert = false;
+      cuerpo.setAttribute("aria-busy", "false");
+    }
   }
 }
 
@@ -452,7 +483,7 @@ function renderizarArticulos(pagina: PaginaDTO<ArticuloCatalogoDTO>): void {
   } else {
     contenedor.innerHTML = pagina.contenido.map((articulo) => `
       <button class="articulo-resultado" type="button" data-precio-id="${articulo.listaPrecioArticuloId}">
-        <span><strong>${escapar(articulo.codigo)} · ${escapar(articulo.nombre)}</strong><small>${escapar(articulo.listaPrecio)}</small></span>
+        <span><strong title="${escapar(articulo.nombre)}">${escapar(articulo.nombre)}</strong><small>${escapar(articulo.codigo)} · ${escapar(articulo.listaPrecio)}</small></span>
         <span class="precio-articulo">${dinero(articulo.precio)}<i data-lucide="plus"></i></span>
       </button>`).join("");
   }
@@ -467,6 +498,11 @@ function renderizarArticulos(pagina: PaginaDTO<ArticuloCatalogoDTO>): void {
 function seleccionarArticulo(id: number): void {
   const articulo = ultimaPaginaArticulos?.contenido.find((actual) => actual.listaPrecioArticuloId === id);
   if (!articulo) return;
+  if (items.length >= 50) {
+    cerrarExplorador();
+    notificar("Una factura admite hasta 50 renglones.", "error");
+    return;
+  }
   items.push({
     uid: siguienteUid++,
     listaPrecioArticuloId: articulo.listaPrecioArticuloId,
@@ -539,7 +575,7 @@ function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
     const ultima = ultimasFechasAutorizadas.get(factura.puntoVentaNumero) || "";
     if (factura.fechaEmision > ultima) ultimasFechasAutorizadas.set(factura.puntoVentaNumero, factura.fechaEmision);
   });
-  elemento<HTMLElement>("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
+  elemento<HTMLElement>("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "encontrado" : "encontrados"}`;
   const cuerpo = elemento<HTMLTableSectionElement>("#facturas-body");
   if (pagina.contenido.length === 0) {
     cuerpo.innerHTML = '<tr><td colspan="8"><div class="vacio-comprobantes"><i data-lucide="file-search"></i><strong>No se encontraron comprobantes</strong><span>Probá con otro número o cambiá los filtros.</span></div></td></tr>';
@@ -571,8 +607,8 @@ async function cargarFacturas(): Promise<void> {
   errorFechas.hidden = !(desde && hasta && hasta < desde);
   if (!errorFechas.hidden) return;
   const solicitud = ++solicitudFacturas;
-  const carga = elemento<HTMLElement>("#estado-carga");
-  carga.classList.add("visible");
+  const carga = elemento("#facturas-body");
+  carga.setAttribute("aria-busy", "true");
   try {
     const pagina = await servicio.obtenerFacturas(filtrosActuales());
     if (solicitud !== solicitudFacturas) return;
@@ -588,7 +624,7 @@ async function cargarFacturas(): Promise<void> {
     elemento<HTMLButtonElement>("#pagina-siguiente").disabled = true;
     renderizarIconos();
   } finally {
-    if (solicitud === solicitudFacturas) carga.classList.remove("visible");
+    if (solicitud === solicitudFacturas) carga.setAttribute("aria-busy", "false");
   }
 }
 
@@ -729,7 +765,9 @@ function cerrarConfirmacion(confirmada: boolean): void {
   const modal = elemento<HTMLDialogElement>("#modal-confirmacion");
   if (!modal.open) return;
   modal.classList.remove("visible");
-  window.setTimeout(() => modal.close(), 160);
+  modal.close();
+  ++solicitudArticulos;
+  window.clearTimeout(temporizadorBusqueda);
   document.body.classList.remove("modal-abierto");
   resolverConfirmacion?.(confirmada);
   resolverConfirmacion = undefined;
@@ -910,6 +948,11 @@ function enlazarEventos(): void {
     if (!(evento.target as HTMLElement).closest(".fecha-personalizada")) cerrarCalendarios();
   });
   window.addEventListener("resize", () => {
+    if (elemento<HTMLDialogElement>("#modal-articulos").open && filasDelMaestro() !== tamanioArticulos) {
+      tamanioArticulos = filasDelMaestro();
+      paginaArticulos = 0;
+      void cargarArticulos();
+    }
     cerrarSelectores();
     cerrarCalendarios();
   });

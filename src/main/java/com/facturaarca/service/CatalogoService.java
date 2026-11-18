@@ -100,7 +100,8 @@ public class CatalogoService {
 
     @Transactional(readOnly = true)
     public PaginaDTO<CatalogosDTO.OpcionCatalogoDTO> buscarClientes(String texto, int pagina, int tamanio) {
-        validarPaginacion(pagina, tamanio);
+        LimitesEntrada.paginacion(pagina, tamanio, 50);
+        LimitesEntrada.longitud(texto, 80, "La búsqueda");
         String busqueda = texto == null ? "" : texto.trim();
         var resultado = clienteRepository.buscarParaExplorador(
                 busqueda, org.springframework.data.domain.PageRequest.of(pagina, tamanio,
@@ -119,7 +120,9 @@ public class CatalogoService {
             int pagina,
             int tamanio
     ) {
-        validarPaginacion(pagina, tamanio);
+        LimitesEntrada.identificador(listaPrecioId);
+        LimitesEntrada.paginacion(pagina, tamanio, 50);
+        LimitesEntrada.longitud(texto, 80, "La búsqueda");
         String busqueda = texto == null ? "" : texto.trim();
         var resultado = listaPrecioArticuloRepository.buscarParaExplorador(
                 listaPrecioId,
@@ -137,15 +140,6 @@ public class CatalogoService {
                 ))
                 .toList();
         return PaginaDTO.crear(contenido, pagina, tamanio, resultado.getTotalElements());
-    }
-
-    private static void validarPaginacion(int pagina, int tamanio) {
-        if (pagina < 0) {
-            throw new IllegalArgumentException("La página no puede ser negativa");
-        }
-        if (tamanio < 1 || tamanio > 50) {
-            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 50");
-        }
     }
 
     private static String limpiarSufijoCarga(String texto) {

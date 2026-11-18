@@ -15,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 public class FacturaRequestDTO {
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd", lenient = com.fasterxml.jackson.annotation.OptBoolean.FALSE)
     private Date fechaEmision;
 
     private Long clienteId;

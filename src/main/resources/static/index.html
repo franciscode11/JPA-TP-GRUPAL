@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-9">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-10">
 </head>
 <body>
   <header class="encabezado">
@@ -18,11 +18,11 @@
   <main>
     <section class="panel" aria-labelledby="titulo-filtros">
       <div class="titulo-seccion">
-        <div><h2 id="titulo-filtros">Buscar comprobantes</h2></div>
-        <span id="contador-resultados" class="contador">Cargando…</span>
+        <h2 id="titulo-filtros" class="titulo-icono"><i data-lucide="search" aria-hidden="true"></i>Buscar comprobantes</h2>
+        <span id="contador-resultados" class="contador" role="status">Cargando…</span>
       </div>
       <form id="filtros-form" class="grilla filtros">
-        <label>Número interno<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 52"></label>
+        <label>Número interno<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,8}" maxlength="9" title="Número interno de hasta 9 dígitos" placeholder="Ej. 52"></label>
         <label>Desde<input id="filtro-desde" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Hasta<input id="filtro-hasta" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button></label>
@@ -36,26 +36,25 @@
             <option value="">Todas</option><option value="true">Informadas</option><option value="false">No informadas</option>
           </select>
         </label>
-        <label>Monto mínimo<input id="filtro-monto" class="control" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]+)?" placeholder="0,00"></label>
-        <div class="botonera-filtros">
-          <button class="boton secundario" id="limpiar-filtros" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Limpiar</span></button>
-          <button class="boton primario" type="submit"><i data-lucide="search" aria-hidden="true"></i><span>Buscar</span></button>
-        </div>
+        <label>Monto mínimo<input id="filtro-monto" class="control" type="text" inputmode="decimal" pattern="[0-9]{1,12}([.,][0-9]{1,2})?" maxlength="15" title="Hasta 12 enteros y 2 decimales" placeholder="0,00"></label>
       </form>
       <p id="error-fechas" class="error-campo" role="alert" hidden>La fecha hasta debe ser igual o posterior a la fecha desde.</p>
-      <div class="descargas">
-        <span>Exportar búsqueda</span>
-        <a id="descargar-pdf" class="enlace-descarga" href="/api/facturas/reporte.pdf"><i data-lucide="file-text" aria-hidden="true"></i>PDF</a>
-        <a id="descargar-excel" class="enlace-descarga" href="/api/facturas/reporte.xlsx"><i data-lucide="sheet" aria-hidden="true"></i>Excel</a>
+      <div class="acciones-busqueda">
+        <div class="descargas" role="group" aria-label="Exportar resultados">
+          <span>Exportar resultados</span>
+          <a id="descargar-pdf" class="enlace-descarga" href="/api/facturas/reporte.pdf"><i data-lucide="file-text" aria-hidden="true"></i>PDF</a>
+          <a id="descargar-excel" class="enlace-descarga" href="/api/facturas/reporte.xlsx"><i data-lucide="sheet" aria-hidden="true"></i>Excel</a>
+        </div>
+        <div class="botonera-filtros">
+          <button class="boton secundario" id="limpiar-filtros" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Limpiar</span></button>
+          <button class="boton primario" type="submit" form="filtros-form"><i data-lucide="search" aria-hidden="true"></i><span>Buscar</span></button>
+        </div>
       </div>
     </section>
 
     <section id="seccion-alta" class="panel panel-alta" aria-labelledby="titulo-alta" hidden>
       <div class="titulo-seccion">
-        <div class="titulo-con-ayuda">
-          <h2 id="titulo-alta">Nueva factura</h2>
-          <span class="ayuda">Se guarda como PENDIENTE hasta recibir un CAE aprobado.</span>
-        </div>
+        <h2 class="titulo-icono"><i data-lucide="file-pen-line" aria-hidden="true"></i><span id="titulo-alta">Nueva factura</span></h2>
         <button id="cerrar-factura" class="boton secundario boton-cerrar" type="button"><i data-lucide="x" aria-hidden="true"></i><span>Cerrar</span></button>
       </div>
       <form id="factura-form">
@@ -86,18 +85,14 @@
     </section>
 
     <section class="panel" aria-labelledby="titulo-listado">
-      <div class="titulo-seccion">
-        <div class="encabezado-listado">
-          <h2 id="titulo-listado">Comprobantes registrados</h2>
-          <span class="ayuda-acciones">Sólo los pendientes se editan o eliminan. Los emitidos se corrigen con nota de crédito.</span>
-        </div>
-        <span id="estado-carga" class="cargando">Actualizando...</span>
+      <div class="titulo-seccion listado-cabecera">
+        <h2 id="titulo-listado" class="titulo-icono"><i data-lucide="receipt-text" aria-hidden="true"></i>Comprobantes registrados</h2>
+        <nav class="paginacion" aria-label="Paginación de comprobantes">
+          <button id="pagina-anterior" aria-label="Página anterior" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
+          <span id="pagina-estado">Página 1</span>
+          <button id="pagina-siguiente" aria-label="Página siguiente" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+        </nav>
       </div>
-      <nav class="paginacion" aria-label="Paginación de comprobantes">
-        <button id="pagina-anterior" aria-label="Página anterior" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
-        <span id="pagina-estado">Página 1</span>
-        <button id="pagina-siguiente" aria-label="Página siguiente" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
-      </nav>
       <div class="tabla-contenedor">
         <table class="tabla facturas-tabla">
           <thead><tr><th>N.º interno</th><th>Fecha</th><th>Cliente</th><th>Punto de venta</th><th>Ítems</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -108,7 +103,7 @@
   </main>
 
   <dialog id="modal-articulos" class="modal modal-articulos" aria-labelledby="articulos-titulo">
-    <div class="modal-contenido">
+    <header class="maestro-cabecera">
       <div class="modal-cabecera">
         <div><p class="modal-tipo">Maestro de artículos</p><h2 id="articulos-titulo">Elegir artículo</h2></div>
         <button id="cerrar-articulos" class="boton-icono" type="button" aria-label="Cerrar"><i data-lucide="x" aria-hidden="true"></i></button>
@@ -116,9 +111,11 @@
       <div class="explorador-controles">
         <label>Lista de precios<select id="lista-precio-id" class="control"></select></label>
         <label>Buscar por código o nombre
-          <span class="busqueda-con-icono"><i data-lucide="search" aria-hidden="true"></i><input id="buscar-articulo" class="control" type="search" placeholder="Ej. iPhone"></span>
+          <span class="busqueda-con-icono"><i data-lucide="search" aria-hidden="true"></i><input id="buscar-articulo" class="control" type="search" maxlength="80" placeholder="Ej. iPhone"></span>
         </label>
       </div>
+    </header>
+    <div class="maestro-cuerpo">
       <div id="articulos-resultados" class="articulos-resultados"></div>
       <div class="explorador-paginacion">
         <button id="articulos-anterior" aria-label="Página anterior de artículos" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
@@ -144,7 +141,7 @@
   <dialog id="modal-clientes" class="modal modal-comprobante" aria-labelledby="clientes-titulo">
     <div class="modal-contenido">
       <div class="modal-cabecera"><h2 id="clientes-titulo">Buscar cliente</h2><button id="cerrar-clientes" type="button" class="boton-icono" aria-label="Cerrar clientes"><i data-lucide="x"></i></button></div>
-      <label>Nombre o CUIT<input id="buscar-cliente" type="search" class="control" placeholder="Buscar por nombre o CUIT"></label>
+      <label>Nombre o CUIT<input id="buscar-cliente" type="search" maxlength="80" class="control" placeholder="Buscar por nombre o CUIT"></label>
       <div id="clientes-resultados" class="articulos-resultados"></div>
       <div class="explorador-paginacion"><button id="clientes-anterior" type="button" class="boton secundario">Anterior</button><span id="clientes-pagina"></span><button id="clientes-siguiente" type="button" class="boton secundario">Siguiente</button></div>
     </div>
@@ -157,6 +154,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-9"></script>
+  <script type="module" src="/js/app.js?v=20261118-10"></script>
 </body>
 </html>

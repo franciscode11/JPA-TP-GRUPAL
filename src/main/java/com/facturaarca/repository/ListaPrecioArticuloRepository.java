@@ -33,7 +33,7 @@ public interface ListaPrecioArticuloRepository extends JpaRepository<ListaPrecio
               )
               AND (:texto = '' OR LOWER(precio.articulo.codigo) LIKE LOWER(CONCAT('%', :texto, '%'))
                    OR LOWER(precio.articulo.denominacion) LIKE LOWER(CONCAT('%', :texto, '%')))
-            ORDER BY precio.articulo.denominacion, precio.articulo.codigo
+            ORDER BY precio.articulo.denominacion, precio.articulo.codigo, precio.id
             """)
     Page<ListaPrecioArticulo> buscarParaExplorador(
             @Param("listaPrecioId") Long listaPrecioId,
