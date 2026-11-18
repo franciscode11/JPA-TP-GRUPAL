@@ -50,6 +50,7 @@ public class FacturaRestController {
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long numeroInterno,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Boolean informadaArca,
             @RequestParam(defaultValue = "0") int pagina,
@@ -57,7 +58,7 @@ public class FacturaRestController {
     ) {
         return facturaService.buscarFacturasPaginadas(
                 fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo,
-                numeroFactura, clienteId, informadaArca, pagina, tamanio
+                numeroFactura, numeroInterno, clienteId, informadaArca, pagina, tamanio
         );
     }
 
@@ -98,11 +99,12 @@ public class FacturaRestController {
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long numeroInterno,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, numeroInterno, clienteId, informadaArca
         );
         return archivo(exportService.generarPdf(facturas), PDF, "reporte-facturas.pdf");
     }
@@ -114,11 +116,12 @@ public class FacturaRestController {
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
+            @RequestParam(required = false) Long numeroInterno,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, numeroInterno, clienteId, informadaArca
         );
         return archivo(exportService.generarExcel(facturas), XLSX, "reporte-facturas.xlsx");
     }

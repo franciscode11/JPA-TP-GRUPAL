@@ -60,7 +60,7 @@ export interface FacturaFiltrosDTO {
   fechaHasta?: string;
   estado?: string;
   montoMinimo?: number;
-  numeroFactura?: number;
+  numeroInterno?: number;
   clienteId?: number;
   informadaArca?: boolean;
   pagina?: number;

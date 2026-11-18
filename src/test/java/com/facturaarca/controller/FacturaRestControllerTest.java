@@ -52,7 +52,7 @@ class FacturaRestControllerTest {
                 "EMITIDA", null
         );
         when(facturaService.buscarFacturasPaginadas(
-                any(), any(), eq("EMITIDA"), eq(1000d), any(), any(), any(), anyInt(), anyInt()
+                any(), any(), eq("EMITIDA"), eq(1000d), any(), any(), any(), any(), anyInt(), anyInt()
         )).thenReturn(PaginaDTO.crear(List.of(dto), 0, 10, 1));
 
         mockMvc.perform(get("/api/facturas")
@@ -68,7 +68,7 @@ class FacturaRestControllerTest {
                 .andExpect(jsonPath("$.totalElementos").value(1));
         org.mockito.Mockito.verify(facturaService).buscarFacturasPaginadas(
                 eq(java.sql.Date.valueOf("2026-03-01")), eq(java.sql.Date.valueOf("2026-03-31")),
-                eq("EMITIDA"), eq(1000d), any(), any(), any(), anyInt(), anyInt());
+                eq("EMITIDA"), eq(1000d), any(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -138,7 +138,7 @@ class FacturaRestControllerTest {
     @Test
     void descargaElPdfConNombreDeArchivo() throws Exception {
         when(facturaService.buscarFacturasFiltradas(
-                null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null
         )).thenReturn(List.of());
         when(exportService.generarPdf(List.of())).thenReturn("%PDF".getBytes());
 

@@ -5,33 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-7">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-9">
 </head>
 <body>
-  <div class="barra-superior"></div>
   <header class="encabezado">
-    <div>
-      <h1>Sistema de facturación</h1>
-    </div>
+    <h1>Sistema de facturación</h1>
     <button id="mostrar-factura" class="boton primario boton-nueva" type="button" aria-controls="seccion-alta" aria-expanded="false">
       <i data-lucide="plus" aria-hidden="true"></i><span>Nueva factura</span>
     </button>
   </header>
 
   <main>
-    <aside id="estado-arca" class="estado-arca" aria-live="polite">
-      <i data-lucide="shield-check" aria-hidden="true"></i>
-      <div><strong>Homologación ARCA</strong><span id="estado-arca-mensaje">Verificando configuración...</span></div>
-      <span class="entorno">Sin validez fiscal</span>
-    </aside>
-
     <section class="panel" aria-labelledby="titulo-filtros">
       <div class="titulo-seccion">
         <div><h2 id="titulo-filtros">Buscar comprobantes</h2></div>
-        <span id="contador-resultados" class="contador">0 comprobantes</span>
+        <span id="contador-resultados" class="contador">Cargando…</span>
       </div>
       <form id="filtros-form" class="grilla filtros">
-        <label>Número<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 1001"></label>
+        <label>Número interno<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 52"></label>
         <label>Desde<input id="filtro-desde" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Hasta<input id="filtro-hasta" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button></label>
@@ -102,17 +93,17 @@
         </div>
         <span id="estado-carga" class="cargando">Actualizando...</span>
       </div>
+      <nav class="paginacion" aria-label="Paginación de comprobantes">
+        <button id="pagina-anterior" aria-label="Página anterior" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
+        <span id="pagina-estado">Página 1</span>
+        <button id="pagina-siguiente" aria-label="Página siguiente" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+      </nav>
       <div class="tabla-contenedor">
         <table class="tabla facturas-tabla">
-          <thead><tr><th>Comprobante</th><th>Fecha</th><th>Cliente</th><th>Punto de venta</th><th>Ítems</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>N.º interno</th><th>Fecha</th><th>Cliente</th><th>Punto de venta</th><th>Ítems</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody id="facturas-body"><tr><td colspan="8" class="tabla-vacia">Cargando comprobantes...</td></tr></tbody>
         </table>
       </div>
-      <nav class="paginacion" aria-label="Paginación de comprobantes">
-        <button id="pagina-anterior" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
-        <span id="pagina-estado">Página 1</span>
-        <button id="pagina-siguiente" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
-      </nav>
     </section>
   </main>
 
@@ -125,14 +116,14 @@
       <div class="explorador-controles">
         <label>Lista de precios<select id="lista-precio-id" class="control"></select></label>
         <label>Buscar por código o nombre
-          <span class="busqueda-con-icono"><i data-lucide="search" aria-hidden="true"></i><input id="buscar-articulo" class="control" type="search" placeholder="Ej. teclado"></span>
+          <span class="busqueda-con-icono"><i data-lucide="search" aria-hidden="true"></i><input id="buscar-articulo" class="control" type="search" placeholder="Ej. iPhone"></span>
         </label>
       </div>
       <div id="articulos-resultados" class="articulos-resultados"></div>
       <div class="explorador-paginacion">
-        <button id="articulos-anterior" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
+        <button id="articulos-anterior" aria-label="Página anterior de artículos" class="boton secundario" type="button"><i data-lucide="chevron-left" aria-hidden="true"></i><span>Anterior</span></button>
         <span id="articulos-pagina">Página 1</span>
-        <button id="articulos-siguiente" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+        <button id="articulos-siguiente" aria-label="Página siguiente de artículos" class="boton secundario" type="button"><span>Siguiente</span><i data-lucide="chevron-right" aria-hidden="true"></i></button>
       </div>
     </div>
   </dialog>
@@ -166,6 +157,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-7"></script>
+  <script type="module" src="/js/app.js?v=20261118-9"></script>
 </body>
 </html>

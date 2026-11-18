@@ -37,7 +37,7 @@ public class FacturaReporteExportService {
 
     private static final String[] ENCABEZADOS = {
             "Nro. factura", "Fecha", "Cliente", "Condición IVA",
-            "Punto de venta", "Importe total", "Ítems"
+            "Punto de venta", "Importe total", "Ítems", "N.º interno"
     };
 
     public byte[] generarPdf(List<FacturaReporteDTO> facturas) {
@@ -53,7 +53,7 @@ public class FacturaReporteExportService {
             encabezado.setSpacingAfter(14);
             documento.add(encabezado);
 
-            PdfPTable tabla = new PdfPTable(new float[]{1.1f, 1.2f, 2.2f, 1.8f, 1.8f, 1.4f, 0.7f});
+            PdfPTable tabla = new PdfPTable(new float[]{1.1f, 1.2f, 2.2f, 1.8f, 1.8f, 1.4f, 0.7f, 0.8f});
             tabla.setWidthPercentage(100);
             agregarEncabezadosPdf(tabla);
 
@@ -68,6 +68,7 @@ public class FacturaReporteExportService {
                 agregarCelda(tabla, factura.getPuntoVentaDescripcion(), Element.ALIGN_LEFT);
                 agregarCelda(tabla, formatoImporte.format(factura.getImporteTotal()), Element.ALIGN_RIGHT);
                 agregarCelda(tabla, String.valueOf(factura.getCantidadItems()), Element.ALIGN_RIGHT);
+                agregarCelda(tabla, "#" + factura.getId(), Element.ALIGN_RIGHT);
             }
 
             documento.add(tabla);
@@ -116,6 +117,7 @@ public class FacturaReporteExportService {
                 importe.setCellStyle(estiloImporte);
 
                 row.createCell(6).setCellValue(factura.getCantidadItems());
+                row.createCell(7).setCellValue("#" + factura.getId());
             }
 
             hoja.createFreezePane(0, 1);

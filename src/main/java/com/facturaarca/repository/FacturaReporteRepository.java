@@ -20,11 +20,11 @@ public class FacturaReporteRepository {
 
     public PaginaDTO<FacturaReporteDTO> buscarPagina(
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo,
-            Long numeroFactura, Long clienteId, Boolean informadaArca,
+            Long numeroFactura, Long numeroInterno, Long clienteId, Boolean informadaArca,
             int pagina, int tamanio
     ) {
         Consulta consulta = construirConsulta(
-                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, numeroInterno, clienteId, informadaArca
         );
         TypedQuery<FacturaReporteDTO> datos = entityManager.createQuery(
                 consulta.jpqlDatos(), FacturaReporteDTO.class
@@ -40,10 +40,10 @@ public class FacturaReporteRepository {
 
     public List<FacturaReporteDTO> buscarTodos(
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo,
-            Long numeroFactura, Long clienteId, Boolean informadaArca
+            Long numeroFactura, Long numeroInterno, Long clienteId, Boolean informadaArca
     ) {
         Consulta consulta = construirConsulta(
-                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, numeroInterno, clienteId, informadaArca
         );
         TypedQuery<FacturaReporteDTO> query = entityManager.createQuery(
                 consulta.jpqlDatos(), FacturaReporteDTO.class
@@ -55,18 +55,18 @@ public class FacturaReporteRepository {
     public List<FacturaReporteDTO> buscarFacturasFiltradas(
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo
     ) {
-        return buscarTodos(fechaDesde, fechaHasta, estado, montoMinimo, null, null, null);
+        return buscarTodos(fechaDesde, fechaHasta, estado, montoMinimo, null, null, null, null);
     }
 
     private Consulta construirConsulta(
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo,
-            Long numeroFactura, Long clienteId, Boolean informadaArca
+            Long numeroFactura, Long numeroInterno, Long clienteId, Boolean informadaArca
     ) {
         StringBuilder condiciones = new StringBuilder(" WHERE 1 = 1");
         Map<String, Object> parametros = new LinkedHashMap<>();
         agregarFiltros(
                 condiciones, parametros, fechaDesde, fechaHasta, estado, montoMinimo,
-                numeroFactura, clienteId, informadaArca
+                numeroFactura, numeroInterno, clienteId, informadaArca
         );
 
         String datos = """
@@ -86,7 +86,7 @@ public class FacturaReporteRepository {
                 GROUP BY f.id, f.numero, f.fechaEmision, c.denominacion,
                          ci.denominacion, pv.descripcion, f.importeTotal,
                          f.estado, f.observaciones, f.cae, f.resultadoAfip, f.motivoRechazo, pv.numero
-                ORDER BY f.fechaEmision DESC, f.numero DESC, f.id DESC
+                ORDER BY f.fechaEmision DESC, f.id DESC
                 """;
 
         String total = """
@@ -100,13 +100,14 @@ public class FacturaReporteRepository {
     private void agregarFiltros(
             StringBuilder jpql, Map<String, Object> parametros,
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo,
-            Long numeroFactura, Long clienteId, Boolean informadaArca
+            Long numeroFactura, Long numeroInterno, Long clienteId, Boolean informadaArca
     ) {
         agregar(jpql, parametros, fechaDesde, "fechaDesde", " AND f.fechaEmision >= :fechaDesde");
         agregar(jpql, parametros, fechaHasta, "fechaHasta", " AND f.fechaEmision <= :fechaHasta");
         agregar(jpql, parametros, estado, "estado", " AND UPPER(f.estado) = :estado");
         agregar(jpql, parametros, montoMinimo, "montoMinimo", " AND f.importeTotal >= :montoMinimo");
         agregar(jpql, parametros, numeroFactura, "numeroFactura", " AND f.numero = :numeroFactura");
+        agregar(jpql, parametros, numeroInterno, "numeroInterno", " AND f.id = :numeroInterno");
         agregar(jpql, parametros, clienteId, "clienteId", " AND c.id = :clienteId");
         if (informadaArca != null) {
             jpql.append(informadaArca ? " AND f.cae IS NOT NULL" : " AND f.cae IS NULL");

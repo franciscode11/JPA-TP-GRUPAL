@@ -2,8 +2,8 @@
 
 El backend es Spring Boot. El frontend es HTML y TypeScript. Los datos se guardan en PostgreSQL.
 
-1. Abrir el sistema y comprobar que indica Homologación, sin validez fiscal.
-2. Buscar por número, cliente o fechas. Los filtros y la paginación se resuelven en el backend.
+1. Abrir el sistema en http://localhost:8080. La confirmación al emitir y la vista de la factura identifican el entorno de homologación.
+2. Buscar por número interno, cliente o fechas. Los filtros y la paginación se resuelven en el backend.
 3. Pulsar Nueva factura. La fecha se elige con calendario y el estado inicial es PENDIENTE.
 4. Buscar el cliente en el explorador, por nombre o documento. Su condición de IVA se completa automáticamente y no se edita desde la factura.
 5. Buscar un producto Apple en su lista de precios Mayorista o Minorista. Agregar cantidad y bonificación. Los precios en pesos son orientativos para el laboratorio; los iPod son reacondicionados.
@@ -13,15 +13,17 @@ El backend es Spring Boot. El frontend es HTML y TypeScript. Los datos se guarda
 
 ## Prueba comprobada
 
-La base local para la exposición se preparó inicialmente con 26 comprobantes: 25 borradores con fechas entre el 24/10/2026 y el 17/11/2026, y una Factura C de Casa Central del 18/11/2026 por $2.394.000, identificador 00001-00000005, CAE 86461073642520. Es una prueba de homologación. Las altas posteriores cambian el contador y el tamaño de la última página.
+La demo local del 18/11/2026 tiene 27 comprobantes de ese día. Cinco tienen CAE de homologación y 22 quedaron pendientes. Hay cuatro clientes. La condición de IVA se completa al elegir uno.
 
-La API devuelve 10, 10 y 6 registros al solicitar pagina=0, pagina=1 y pagina=2 con tamanio=10. Se verificaron 26 IDs distintos; la paginación se resuelve con offset y límite en la consulta del backend.
+Para mostrar la paginación, abrí la pestaña Red del navegador y pulsá **Página siguiente**. Cada clic solicita una página al servidor. PostgreSQL devuelve 10 filas para la primera, 10 para la segunda y 7 para la tercera. Los filtros se aplican antes del límite de filas.
 
-Los borradores antiguos permiten mostrar filtros y paginación. Para emitir uno, editar su fecha para que no sea anterior al último comprobante autorizado en su punto de venta. Antes de solicitar CAE, el sistema consulta FECompUltimoAutorizado y FECompConsultar y valida esa fecha.
+Para mostrar una emisión ya aprobada, buscá el número interno **73** y elegí **Ver factura**. En la grilla, cada comprobante tiene un número interno corto asignado por PostgreSQL al crear el borrador. El número persiste al emitir y la secuencia avanza aunque se elimine el último borrador. En la vista de la factura aparecen el número fiscal del punto de venta, el CAE y su vencimiento.
 
-El número incluye punto de venta y correlativo. 00001-00000002 y 00002-00000002 son comprobantes distintos. Existe una restricción única por punto de venta y número en la base para este laboratorio de Factura C.
+Para mostrar una emisión nueva, elegí un pendiente de la fecha admitida por ARCA. Antes de pedir CAE el servidor consulta el último número autorizado y su fecha para ese punto de venta y tipo de comprobante.
 
-Los clientes ficticios y comprobantes de las pruebas anteriores se retiraron de la base local, con respaldo recuperable fuera del repositorio. El explorador muestra clientes con condición de IVA registrada; esa condición se completa automáticamente y no se puede cambiar en la factura. No cambiar una condición tributaria únicamente para superar una validación de ARCA.
+### Condición de IVA para la exposición
+
+En las ventas locales de esta demo el emisor es monotributista y emite Factura C. El receptor puede ser consumidor final, monotributista o responsable inscripto. El backend valida la condición elegida contra la ficha del cliente y la informa a ARCA. Un emisor responsable inscripto habilitado sí puede emitir una A a un monotributista. [Cuadro de emisores y receptores de ARCA](https://www.arca.gob.ar/facturacion/regimen-general/)
 
 ## Qué explicar
 

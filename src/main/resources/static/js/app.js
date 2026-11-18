@@ -283,15 +283,16 @@ function cargarCatalogos() {
 function abrirFormulario() {
     const seccion = elemento("#seccion-alta");
     seccion.hidden = false;
-    requestAnimationFrame(() => seccion.classList.add("visible"));
+    seccion.classList.add("visible");
     elemento("#mostrar-factura").setAttribute("aria-expanded", "true");
-    seccion.scrollIntoView({ behavior: "smooth", block: "start" });
+    seccion.scrollIntoView({ behavior: "auto", block: "start" });
     elemento("#factura-form .fecha-control").focus({ preventScroll: true });
 }
 function ocultarFormulario() {
     const seccion = elemento("#seccion-alta");
     seccion.classList.remove("visible");
-    window.setTimeout(() => { seccion.hidden = true; }, 180);
+    seccion.hidden = true;
+    elemento("#mostrar-factura").focus({ preventScroll: true });
     elemento("#mostrar-factura").setAttribute("aria-expanded", "false");
 }
 function reiniciarFormulario() {
@@ -418,7 +419,7 @@ function seleccionarArticulo(id) {
 function filtrosActuales(incluirPagina = true) {
     const informada = valor("filtro-informada");
     const filtros = {
-        numeroFactura: valor("filtro-numero") ? numero(valor("filtro-numero")) : undefined,
+        numeroInterno: valor("filtro-numero") ? numero(valor("filtro-numero")) : undefined,
         fechaDesde: valor("filtro-desde") || undefined,
         fechaHasta: valor("filtro-hasta") || undefined,
         clienteId: valor("filtro-cliente") ? Number(valor("filtro-cliente")) : undefined,
@@ -447,8 +448,7 @@ function actualizarDescargas() {
 }
 function accionesFactura(factura) {
     if (factura.estado !== "PENDIENTE") {
-        const detalle = factura.cae ? `CAE ${escapar(factura.cae)}` : "Comprobante bloqueado";
-        return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button><span class="accion-bloqueada"><i data-lucide="lock-keyhole"></i>${detalle}</span>`;
+        return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button>`;
     }
     const ultimaFecha = ultimasFechasAutorizadas.get(factura.puntoVentaNumero);
     const fechaAnterior = ultimaFecha && factura.fechaEmision < ultimaFecha;
@@ -460,8 +460,8 @@ function accionesFactura(factura) {
     <button class="boton-tabla emitir" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}" title="${tituloEmitir}" ${emitirDeshabilitado}>
       <i data-lucide="send"></i><span>Emitir ARCA</span>
     </button>
-    <button class="boton-tabla editar" type="button" data-id="${factura.id}"><i data-lucide="pencil"></i><span>Editar</span></button>
-    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>
+    <button class="boton-tabla editar" type="button" aria-label="Editar borrador #${factura.id}" title="Editar borrador" data-id="${factura.id}"><i data-lucide="pencil"></i><span>Editar</span></button>
+    <button class="boton-tabla peligro eliminar" type="button" aria-label="Eliminar borrador #${factura.id}" title="Eliminar borrador" data-id="${factura.id}" data-etiqueta="${etiqueta}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>
     ${fechaAnterior ? '<small class="ayuda-fecha">Editá la fecha antes de emitir.</small>' : ""}`;
 }
 function renderizarFacturas(pagina) {
@@ -479,14 +479,14 @@ function renderizarFacturas(pagina) {
     else {
         cuerpo.innerHTML = pagina.contenido.map((factura) => `
       <tr>
-        <td><strong>${escapar(factura.identificador)}</strong><small>${escapar(factura.condicionIva)}</small></td>
+        <td><strong class="referencia">#${factura.id}</strong></td>
         <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
-        <td>${escapar(factura.clienteDenominacion)}</td>
+        <td>${escapar(factura.clienteDenominacion)}<small>${escapar(factura.condicionIva)}</small></td>
         <td>${escapar(factura.puntoVentaDescripcion)}</td>
         <td class="numero">${factura.cantidadItems}</td>
         <td class="numero destacado">${dinero(factura.importeTotal)}</td>
         <td><span class="estado estado-${factura.estado.toLowerCase()}">${escapar(factura.estado)}</span></td>
-        <td class="acciones">${accionesFactura(factura)}</td>
+        <td><div class="acciones">${accionesFactura(factura)}</div></td>
       </tr>`).join("");
     }
     elemento("#pagina-estado").textContent = pagina.totalPaginas === 0
@@ -632,7 +632,7 @@ async function mostrarComprobante(reporte) {
     const factura = await servicio.obtenerFactura(reporte.id);
     const modal = elemento("#modal-comprobante");
     elemento("#comprobante-contenido").innerHTML = `
-    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>${escapar(reporte.identificador)}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
+    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante #${reporte.id}</p><h2 id="comprobante-titulo">Factura C <span>${escapar(reporte.identificador)}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
     <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
     ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
@@ -730,12 +730,6 @@ async function accionFactura(evento) {
     catch (error) {
         notificar(error.message, "error");
     }
-}
-async function cargarEstadoArca() {
-    estadoArca = await servicio.obtenerEstadoArca();
-    const panel = elemento("#estado-arca");
-    panel.classList.toggle("configurada", estadoArca.configurada);
-    elemento("#estado-arca-mensaje").textContent = estadoArca.mensaje;
 }
 function enlazarEventos() {
     document.querySelectorAll("[data-buscar-cliente]").forEach(boton => boton.addEventListener("click", () => {
@@ -873,7 +867,6 @@ async function iniciar() {
             servicio.obtenerEstadoArca(),
         ]);
         cargarCatalogos();
-        await cargarEstadoArca();
         reiniciarFormulario();
         await cargarFacturas();
     }

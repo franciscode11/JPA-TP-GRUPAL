@@ -132,6 +132,16 @@ class FacturaReporteRepositoryTest {
         )).isEmpty();
     }
 
+    @Test
+    void elNumeroInternoDelListadoTambienFiltraLosReportes() {
+        Long id = repository.buscarFacturasFiltradas(null, null, null, null).get(0).getId();
+        assertThat(repository.buscarPagina(null, null, null, null, null, id, null, null, 0, 10)
+                .contenido()).extracting(FacturaReporteDTO::getId).containsExactly(id);
+        assertThat(repository.buscarTodos(null, null, null, null, null, id, null, null))
+                .extracting(FacturaReporteDTO::getId).containsExactly(id);
+        assertThat(repository.buscarTodos(null, null, null, null, null, -1L, null, null)).isEmpty();
+    }
+
     private FacturaVentaDetalle detalle(String descripcion, double subtotal, ListaPrecioArticulo precio) {
         FacturaVentaDetalle detalle = new FacturaVentaDetalle();
         detalle.setListaPrecioArticulo(precio);

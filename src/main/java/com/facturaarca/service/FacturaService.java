@@ -77,6 +77,7 @@ public class FacturaService {
             String estado,
             Double montoMinimo,
             Long numeroFactura,
+            Long numeroInterno,
             Long clienteId,
             Boolean informadaArca,
             int pagina,
@@ -86,7 +87,7 @@ public class FacturaService {
         validarPaginacion(pagina, tamanio);
         return facturaReporteRepository.buscarPagina(
                 fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
-                numeroFactura, clienteId, informadaArca, pagina, tamanio
+                numeroFactura, numeroInterno, clienteId, informadaArca, pagina, tamanio
         );
     }
 
@@ -97,13 +98,14 @@ public class FacturaService {
             String estado,
             Double montoMinimo,
             Long numeroFactura,
+            Long numeroInterno,
             Long clienteId,
             Boolean informadaArca
     ) {
         validarFiltros(fechaDesde, fechaHasta, montoMinimo);
         return facturaReporteRepository.buscarTodos(
                 fechaDesde, fechaHasta, normalizarFiltroEstado(estado), montoMinimo,
-                numeroFactura, clienteId, informadaArca
+                numeroFactura, numeroInterno, clienteId, informadaArca
         );
     }
 
@@ -112,7 +114,7 @@ public class FacturaService {
             Date fechaDesde, Date fechaHasta, String estado, Double montoMinimo
     ) {
         return buscarFacturasFiltradas(
-                fechaDesde, fechaHasta, estado, montoMinimo, null, null, null
+                fechaDesde, fechaHasta, estado, montoMinimo, null, null, null, null
         );
     }
 
@@ -134,7 +136,7 @@ public class FacturaService {
 
     @Transactional(readOnly = true)
     public FacturaEdicionDTO obtenerParaEdicion(Long id) {
-        FacturaVenta factura = buscarFactura(id);
+        FacturaVenta factura = buscarFactura(id, false);
         return new FacturaEdicionDTO(
                 factura.getId(),
                 factura.getNumero(),
@@ -175,7 +177,7 @@ public class FacturaService {
             throw new IllegalArgumentException("El cuerpo de la petición es obligatorio");
         }
 
-        FacturaVenta factura = buscarFactura(id);
+        FacturaVenta factura = buscarFactura(id, true);
 
         if (!"PENDIENTE".equals(factura.getEstado())) {
             throw new IllegalStateException("Sólo las facturas pendientes pueden editarse");
@@ -218,7 +220,7 @@ public class FacturaService {
 
     @Transactional
     public FacturaReporteDTO emitirEnArca(Long id) {
-        FacturaVenta factura = buscarFactura(id);
+        FacturaVenta factura = buscarFactura(id, true);
         if (!"PENDIENTE".equals(factura.getEstado())) {
             throw new IllegalStateException("La factura ya fue informada o no está pendiente");
         }
@@ -241,7 +243,7 @@ public class FacturaService {
 
     @Transactional
     public void eliminar(Long id) {
-        FacturaVenta factura = buscarFactura(id);
+        FacturaVenta factura = buscarFactura(id, true);
         if (!"PENDIENTE".equals(factura.getEstado())) {
             throw new IllegalStateException(
                     "Una factura emitida no se elimina. Para corregirla corresponde una nota de crédito"
@@ -314,11 +316,11 @@ public class FacturaService {
         factura.setImporteSaldo(0);
     }
 
-    private FacturaVenta buscarFactura(Long id) {
+    private FacturaVenta buscarFactura(Long id, boolean paraModificar) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("El ID de la factura debe ser válido");
         }
-        return facturaRepository.findById(id)
+        return (paraModificar ? facturaRepository.findOneById(id) : facturaRepository.findById(id))
                 .orElseThrow(() -> noExiste("Factura", id));
     }
 
