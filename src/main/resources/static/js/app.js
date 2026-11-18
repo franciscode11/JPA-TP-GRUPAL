@@ -673,14 +673,45 @@ async function mostrarComprobante(reporte) {
     const factura = await servicio.obtenerFactura(reporte.id);
     const modal = elemento("#modal-comprobante");
     elemento("#comprobante-contenido").innerHTML = `
-    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante #${reporte.id}</p><h2 id="comprobante-titulo">Factura C <span>${escapar(reporte.identificador)}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
-    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
-    <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
-    ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
-    </tbody></table></div>
-    <div class="factura-resumen"><div><span>Autorización ARCA</span><strong>CAE ${escapar(reporte.cae)}</strong><small>Vence el ${fechaVisible(factura.vencimientoCae || "", "Sin fecha")}</small></div><div class="factura-total"><span>Total</span><strong>${dinero(reporte.importeTotal)}</strong></div></div>
-    ${factura.observaciones ? `<div class="factura-nota"><span>Observaciones</span><p>${escapar(factura.observaciones)}</p></div>` : ""}
-    <p class="factura-testing"><i data-lucide="shield-check"></i>Homologación · Sin validez fiscal</p>`;
+    <header class="factura-encabezado">
+      <div>
+        <p class="modal-tipo">Comprobante #${reporte.id}</p>
+        <h2 id="comprobante-titulo">Factura C <span>${escapar(reporte.identificador)}</span></h2>
+      </div>
+      <span class="estado estado-emitida"><i data-lucide="check" aria-hidden="true"></i>Emitida</span>
+    </header>
+    <dl class="factura-datos">
+      <div class="factura-cliente">
+        <dt>Cliente</dt>
+        <dd><strong>${escapar(reporte.clienteDenominacion)}</strong>
+          <small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></dd>
+      </div>
+      <div><dt>Fecha de emisión</dt><dd><time datetime="${escapar(reporte.fechaEmision)}">${fechaVisible(reporte.fechaEmision, "")}</time></dd></div>
+      <div><dt>Punto de venta</dt><dd>${escapar(reporte.puntoVentaDescripcion)}</dd></div>
+    </dl>
+    <section aria-labelledby="factura-detalle-titulo">
+      <h3 id="factura-detalle-titulo">Detalle de la venta</h3>
+      <div class="factura-importes">
+        <table class="tabla factura-items" aria-labelledby="factura-detalle-titulo">
+          <thead><tr><th scope="col">Artículo</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Bonif.</th><th scope="col">Importe</th></tr></thead>
+          <tbody>${factura.detalles.map(detalle => `
+            <tr>
+              <td><strong>${escapar(detalle.articuloNombre)}</strong><small>${escapar(detalle.articuloCodigo)}</small></td>
+              <td data-campo="Cantidad">${detalle.cantidad.toLocaleString("es-AR")}</td>
+              <td data-campo="Precio unitario">${dinero(detalle.precioUnitario)}</td>
+              <td data-campo="Bonif.">${detalle.porcentajeBonificacion.toLocaleString("es-AR")}%</td>
+              <td data-campo="Importe">${dinero(detalle.importeSubtotal)}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+        <dl class="factura-total"><dt>Total</dt><dd>${dinero(reporte.importeTotal)}</dd></dl>
+      </div>
+    </section>
+    ${factura.observaciones ? `<section class="factura-nota"><h3>Observaciones</h3><p>${escapar(factura.observaciones)}</p></section>` : ""}
+    <section class="factura-autorizacion" aria-labelledby="factura-autorizacion-titulo">
+      <h3 id="factura-autorizacion-titulo"><i data-lucide="badge-check" aria-hidden="true"></i>Autorización ARCA</h3>
+      <dl><div><dt>CAE</dt><dd>${escapar(reporte.cae)}</dd></div>
+        <div><dt>Vencimiento</dt><dd>${fechaVisible(factura.vencimientoCae || "", "Sin fecha")}</dd></div></dl>
+    </section>`;
     renderizarIconos();
     modal.showModal();
     modal.classList.add("visible");

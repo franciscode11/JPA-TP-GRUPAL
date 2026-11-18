@@ -17,7 +17,7 @@
   --shadow: 0 18px 55px rgba(28, 28, 24, .06);
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
 [hidden] { display: none !important; }
 html { min-width: 320px; scrollbar-gutter: stable; }
 body {
@@ -346,32 +346,46 @@ button.boton-cerrar, #cerrar-clientes, #cerrar-articulos, #cerrar-comprobante {
 .acciones .ayuda-fecha { flex-basis: 100%; margin-top: 2px; color: var(--muted); font-size: .72rem; }
 .modal-comprobante { width: min(800px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; }
 .modal-comprobante .modal-contenido { padding: 30px; }
-.factura-encabezado { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
-.factura-encabezado h2 { font-size: 1.65rem; letter-spacing: -.045em; margin-bottom: 7px; }
-.factura-encabezado h2 span { font-weight: 500; color: var(--muted); }
-.factura-encabezado p:not(.modal-tipo) { color: var(--muted); font-size: .82rem; margin-bottom: 0; }
-.factura-datos { display: grid; grid-template-columns: 1fr auto; gap: 24px; padding: 25px 0; margin: 20px 0 0; border-top: 1px solid var(--line); }
-.factura-datos > div, .factura-resumen > div { display: grid; align-content: start; gap: 6px; }
-.factura-datos span, .factura-resumen span, .factura-nota > span { font-size: .76rem; color: var(--muted); }
-.factura-datos strong { font-size: .91rem; font-weight: 650; }
-.factura-datos small, .factura-resumen small { font-size: .76rem; color: var(--muted); }
-.factura-resumen { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; padding: 24px 0; }
-.factura-resumen strong { font-size: .87rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.factura-total { text-align: right; }
-.factura-total strong { font-size: 1.75rem; letter-spacing: -.04em; font-weight: 750; }
-.factura-nota { padding: 14px 16px; background: var(--surface-soft); border-radius: 8px; }
-.factura-nota p { margin: 5px 0 0; font-size: .82rem; line-height: 1.5; }
-.factura-testing { display: flex; align-items: center; gap: 7px; font-size: .73rem; color: var(--muted); margin: 20px 0 0; }
-.factura-testing svg { width: 14px; height: 14px; }
+#comprobante-contenido { display: grid; gap: 22px; }
+#comprobante-contenido dl, #comprobante-contenido dd { margin: 0; }
+#comprobante-contenido h3 { font-size: .9rem; margin: 0 0 10px; }
+.factura-encabezado { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.factura-encabezado h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.04em; }
+.factura-encabezado h2 span { display: block; margin-top: 4px; font-size: .95rem; font-weight: 550; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.factura-encabezado .estado { display: inline-flex; align-items: center; gap: 4px; }
+.factura-encabezado .estado svg { width: 13px; height: 13px; }
+.factura-datos { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 1fr; gap: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
+.factura-datos dt, .factura-autorizacion dt { color: var(--muted); font-size: .73rem; margin-bottom: 5px; }
+.factura-datos dd { font-size: .87rem; font-weight: 620; overflow-wrap: anywhere; }
+.factura-cliente strong { display: block; font-size: 1rem; }
+.factura-cliente small { display: block; margin-top: 4px; font-size: .78rem; font-weight: 400; color: var(--muted); }
+.factura-importes { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.factura-items th:not(:first-child), .factura-items td:not(:first-child) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.factura-items td:first-child { overflow-wrap: anywhere; }
+.factura-items td:last-child { font-weight: 650; }
+.factura-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px; border-top: 1px solid var(--line); background: var(--surface-soft); font-weight: 700; }
+.factura-total dd { font-size: clamp(1.35rem, 3vw, 1.72rem); letter-spacing: -.035em; overflow-wrap: anywhere; }
+.factura-nota p { font-size: .84rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.factura-autorizacion h3, .factura-pie p { display: flex; align-items: center; gap: 7px; }
+.factura-autorizacion dl { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+.factura-autorizacion dd { font-size: .84rem; font-variant-numeric: tabular-nums; }
+.factura-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 16px; margin-top: 20px; border-top: 1px solid var(--line); }
+.factura-pie p { color: var(--muted); font-size: .75rem; margin: 0; }
 .filtros label { align-content: start; }
 .cabecera-factura .observaciones textarea { min-height: 80px; }
 .titulo-con-ayuda { align-items: flex-start; flex-direction: column; gap: 5px; }
 .panel { box-shadow: 0 6px 24px rgba(28, 28, 24, .025); }
 @media (max-width: 680px) {
   .modal-comprobante .modal-contenido { padding: 20px; }
-  .factura-encabezado h2 { font-size: 1.3rem; }
-  .factura-datos, .factura-resumen { grid-template-columns: 1fr; }
-  .factura-total { text-align: left; }
+  .factura-datos { grid-template-columns: 1fr 1fr; }
+  .factura-cliente { grid-column: 1 / -1; }
+  .factura-items thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .factura-items tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .factura-items tbody tr + tr { border-top: 1px solid var(--line); }
+  .factura-items tbody td { padding: 0; border: 0; }
+  .factura-items tbody td:first-child { grid-column: 1 / -1; }
+  .factura-items tbody td[data-campo] { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+  .factura-items td[data-campo]::before { content: attr(data-campo); display: block; color: var(--muted); font-size: .7rem; font-weight: 400; margin-bottom: 3px; }
 }
 .comprobante-total { text-align: right; font-size: 1.4rem; font-weight: 750; }
 .comprobante-cae { padding: 12px; background: #edf7f1; color: #245a42; border-radius: 8px; }

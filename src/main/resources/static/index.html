@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-10">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-11">
 </head>
 <body>
   <header class="encabezado">
@@ -148,12 +148,15 @@
   </dialog>
   <dialog id="modal-comprobante" class="modal modal-comprobante" aria-labelledby="comprobante-titulo">
     <div class="modal-contenido">
-      <div id="comprobante-contenido"></div>
-      <div class="modal-acciones"><button id="cerrar-comprobante" class="boton secundario" type="button">Cerrar</button></div>
+      <article id="comprobante-contenido" aria-labelledby="comprobante-titulo"></article>
+      <footer class="factura-pie">
+        <p><i data-lucide="shield-check" aria-hidden="true"></i>Homologación · Sin validez fiscal</p>
+        <button id="cerrar-comprobante" class="boton secundario" type="button">Cerrar</button>
+      </footer>
     </div>
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-10"></script>
+  <script type="module" src="/js/app.js?v=20261118-11"></script>
 </body>
 </html>
