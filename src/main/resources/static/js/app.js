@@ -396,7 +396,7 @@ async function cargarArticulos() {
     elemento("#articulos-siguiente").disabled = true;
     try {
         const lista = valor("lista-precio-id");
-        const pagina = await servicio.buscarArticulos(lista ? Number(lista) : undefined, valor("buscar-articulo"), paginaArticulos, tamanioArticulos, items.map(item => item.articuloId));
+        const pagina = await servicio.buscarArticulos(lista ? Number(lista) : undefined, valor("buscar-articulo"), paginaArticulos, tamanioArticulos, items.map(item => item.listaPrecioArticuloId));
         if (solicitud !== solicitudArticulos)
             return;
         ultimaPaginaArticulos = pagina;
@@ -437,7 +437,7 @@ function renderizarArticulos(pagina) {
 }
 function seleccionarArticulo(id) {
     const articulo = ultimaPaginaArticulos?.contenido.find((actual) => actual.listaPrecioArticuloId === id);
-    if (!articulo || items.some(item => item.articuloId === articulo.articuloId))
+    if (!articulo || items.some(item => item.listaPrecioArticuloId === articulo.listaPrecioArticuloId))
         return;
     if (items.length >= 50) {
         cerrarExplorador();
