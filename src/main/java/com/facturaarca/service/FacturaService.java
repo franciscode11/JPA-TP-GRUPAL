@@ -249,9 +249,9 @@ public class FacturaService {
     @Transactional
     public void eliminar(Long id) {
         FacturaVenta factura = buscarFactura(id, true);
-        if (!List.of("PENDIENTE", "EMITIDA").contains(factura.getEstado())) {
+        if (!"PENDIENTE".equals(factura.getEstado())) {
             throw new IllegalStateException(
-                    "El comprobante ya está anulado"
+                    "Sólo se pueden dar de baja comprobantes pendientes. Las facturas emitidas están bloqueadas"
             );
         }
         Date ahora = new Date();

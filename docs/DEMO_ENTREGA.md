@@ -46,6 +46,6 @@ Por pedido del grupo, Eliminar ahora da de baja sólo pendientes: conserva cabec
 
 ## Corrección de anulación y PDF individual
 
-La baja admite PENDIENTE y EMITIDA. Conserva cabecera, detalles, número fiscal y CAE, registra fecha y usuario de baja y muestra ANULADA. Esta transición se registra en la aplicación académica; no envía una revocación a ARCA.
+La baja admite únicamente PENDIENTE. Las EMITIDAS están bloqueadas tanto en la API como en la interfaz. Conserva cabecera, detalles, número fiscal y CAE, registra fecha y usuario de baja y muestra ANULADA. Esta transición se registra en la aplicación académica; no envía una revocación a ARCA.
 
 Ver factura permite descargar /api/facturas/{id}/pdf. El PDF individual incluye estado, cliente, documento, artículos, lista, cantidades, precios, descuentos, total, CAE, vencimiento y fecha de baja cuando corresponde. Los detalles largos continúan en páginas con encabezados repetidos.

@@ -553,8 +553,7 @@ function actualizarDescargas(): void {
 
 function accionesFactura(factura: FacturaReporteDTO): string {
   if (factura.estado !== "PENDIENTE") {
-    return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button>
-      ${factura.estado === "EMITIDA" ? `<button class="boton-tabla peligro eliminar" type="button" aria-label="Anular factura #${factura.id}" title="Anular factura" data-id="${factura.id}" data-etiqueta="factura #${factura.id}"><i data-lucide="trash-2"></i><span>Anular</span></button>` : ""}`;
+    return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button>`;
   }
   const ultimaFecha = ultimasFechasAutorizadas.get(factura.puntoVentaNumero);
   const fechaAnterior = ultimaFecha && factura.fechaEmision < ultimaFecha;
