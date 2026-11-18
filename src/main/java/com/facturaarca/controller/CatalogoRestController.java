@@ -28,9 +28,10 @@ public class CatalogoRestController {
             @RequestParam(required = false) Long listaPrecioId,
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "0") int pagina,
-            @RequestParam(defaultValue = "8") int tamanio
+            @RequestParam(defaultValue = "8") int tamanio,
+            @RequestParam(defaultValue = "") java.util.List<Long> excluidos
     ) {
-        return catalogoService.buscarArticulos(listaPrecioId, q, pagina, tamanio);
+        return catalogoService.buscarArticulos(listaPrecioId, q, pagina, tamanio, excluidos);
     }
 
     @GetMapping("/clientes")

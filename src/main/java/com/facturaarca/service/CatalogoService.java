@@ -118,8 +118,13 @@ public class CatalogoService {
             Long listaPrecioId,
             String texto,
             int pagina,
-            int tamanio
+            int tamanio,
+            List<Long> excluidos
     ) {
+        if (excluidos.size() > 50 || excluidos.contains(null)) {
+            throw new IllegalArgumentException("Se admiten hasta 50 artículos excluidos válidos");
+        }
+        excluidos.forEach(LimitesEntrada::identificador);
         LimitesEntrada.identificador(listaPrecioId);
         LimitesEntrada.paginacion(pagina, tamanio, 50);
         LimitesEntrada.longitud(texto, 80, "La búsqueda");
@@ -127,6 +132,7 @@ public class CatalogoService {
         var resultado = listaPrecioArticuloRepository.buscarParaExplorador(
                 listaPrecioId,
                 busqueda,
+                excluidos.isEmpty() ? List.of(-1L) : excluidos,
                 PageRequest.of(pagina, tamanio)
         );
         List<CatalogosDTO.ArticuloCatalogoDTO> contenido = resultado.getContent().stream()

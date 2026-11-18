@@ -25,6 +25,7 @@ public interface ListaPrecioArticuloRepository extends JpaRepository<ListaPrecio
             FROM ListaPrecioArticulo precio
             WHERE precio.fechaBaja IS NULL AND precio.articulo.fechaBaja IS NULL
               AND (:listaPrecioId IS NULL OR precio.listaPrecio.id = :listaPrecioId)
+              AND precio.articulo.id NOT IN :excluidos
               AND precio.id = (
                   SELECT MIN(otro.id)
                   FROM ListaPrecioArticulo otro
@@ -38,6 +39,7 @@ public interface ListaPrecioArticuloRepository extends JpaRepository<ListaPrecio
     Page<ListaPrecioArticulo> buscarParaExplorador(
             @Param("listaPrecioId") Long listaPrecioId,
             @Param("texto") String texto,
+            @Param("excluidos") List<Long> excluidos,
             Pageable pageable
     );
 }

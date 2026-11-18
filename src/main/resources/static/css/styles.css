@@ -652,3 +652,9 @@ body:has(#modal-comprobante[open]) { overflow: hidden; }
   #modal-comprobante .factura-pie p { flex-basis: 100%; }
   #modal-comprobante .factura-pie .factura-acciones { grid-column: 1 / -1; justify-self: end; }
 }
+
+.detalle-contenedor { overflow-y: scroll; scrollbar-width: auto; scrollbar-color: auto; }
+.detalle-contenedor::-webkit-scrollbar { display: block; width: 12px; height: 12px; }
+.detalle-contenedor::-webkit-scrollbar-track { background: #efefec; border-radius: 8px; }
+.detalle-contenedor::-webkit-scrollbar-thumb { background: #8a8a85; border: 3px solid #efefec; border-radius: 8px; }
+.detalle-contenedor::-webkit-scrollbar-thumb:hover { background: #5f5f59; }

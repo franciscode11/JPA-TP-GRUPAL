@@ -60,9 +60,11 @@ export class FacturaService {
     texto: string,
     pagina: number,
     tamanio: number,
+    excluidos: number[] = [],
   ): Promise<PaginaDTO<ArticuloCatalogoDTO>> {
     const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: String(tamanio) });
     if (listaPrecioId !== undefined) parametros.set("listaPrecioId", String(listaPrecioId));
+    if (excluidos.length) parametros.set("excluidos", [...new Set(excluidos)].join(","));
     return this.solicitar<PaginaDTO<ArticuloCatalogoDTO>>(`/api/catalogos/articulos?${parametros}`);
   }
 

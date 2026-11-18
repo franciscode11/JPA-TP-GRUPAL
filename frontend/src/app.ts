@@ -460,7 +460,7 @@ async function cargarArticulos(): Promise<void> {
   try {
     const lista = valor("lista-precio-id");
     const pagina = await servicio.buscarArticulos(lista ? Number(lista) : undefined,
-      valor("buscar-articulo"), paginaArticulos, tamanioArticulos);
+      valor("buscar-articulo"), paginaArticulos, tamanioArticulos, items.map(item => item.articuloId));
     if (solicitud !== solicitudArticulos) return;
     ultimaPaginaArticulos = pagina;
     renderizarArticulos(pagina);
@@ -498,7 +498,7 @@ function renderizarArticulos(pagina: PaginaDTO<ArticuloCatalogoDTO>): void {
 
 function seleccionarArticulo(id: number): void {
   const articulo = ultimaPaginaArticulos?.contenido.find((actual) => actual.listaPrecioArticuloId === id);
-  if (!articulo) return;
+  if (!articulo || items.some(item => item.articuloId === articulo.articuloId)) return;
   if (items.length >= 50) {
     cerrarExplorador();
     notificar("Una factura admite hasta 50 renglones.", "error");

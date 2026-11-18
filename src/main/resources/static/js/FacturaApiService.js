@@ -38,10 +38,12 @@ export class FacturaService {
     async obtenerCatalogos() {
         return this.solicitar("/api/catalogos");
     }
-    async buscarArticulos(listaPrecioId, texto, pagina, tamanio) {
+    async buscarArticulos(listaPrecioId, texto, pagina, tamanio, excluidos = []) {
         const parametros = new URLSearchParams({ q: texto, pagina: String(pagina), tamanio: String(tamanio) });
         if (listaPrecioId !== undefined)
             parametros.set("listaPrecioId", String(listaPrecioId));
+        if (excluidos.length)
+            parametros.set("excluidos", [...new Set(excluidos)].join(","));
         return this.solicitar(`/api/catalogos/articulos?${parametros}`);
     }
     async obtenerEstadoArca() {
