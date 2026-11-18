@@ -36,8 +36,8 @@ import java.util.Locale;
 public class FacturaReporteExportService {
 
     private static final String[] ENCABEZADOS = {
-            "Nro. factura", "Fecha", "Cliente", "Condición IVA",
-            "Punto de venta", "Importe total", "Ítems", "N.º interno"
+            "N.º interno", "N.º fiscal", "Fecha", "Cliente", "Condición IVA",
+            "Punto de venta", "Importe total", "Ítems", "Estado"
     };
 
     public byte[] generarComprobante(FacturaReporteDTO reporte,
@@ -184,22 +184,24 @@ public class FacturaReporteExportService {
             encabezado.setSpacingAfter(14);
             documento.add(encabezado);
 
-            PdfPTable tabla = new PdfPTable(new float[]{1.1f, 1.2f, 2.2f, 1.8f, 1.8f, 1.4f, 0.7f, 0.8f});
+            PdfPTable tabla = new PdfPTable(new float[]{.9f, 1.7f, 1.2f, 2.1f, 1.7f, 1.5f, 1.7f, .6f, 1.1f});
             tabla.setWidthPercentage(100);
             agregarEncabezadosPdf(tabla);
+            tabla.setHeaderRows(1);
 
             SimpleDateFormat formatoFecha = new SimpleDateFormat("dd/MM/yyyy");
             NumberFormat formatoImporte = NumberFormat.getCurrencyInstance(new Locale("es", "AR"));
 
             for (FacturaReporteDTO factura : facturas) {
-                agregarCelda(tabla, numeroVisible(factura), Element.ALIGN_RIGHT);
+                agregarCelda(tabla, "#" + factura.getId(), Element.ALIGN_RIGHT);
+                agregarCelda(tabla, numeroVisible(factura), Element.ALIGN_LEFT);
                 agregarCelda(tabla, formatoFecha.format(factura.getFechaEmision()), Element.ALIGN_CENTER);
                 agregarCelda(tabla, factura.getClienteDenominacion(), Element.ALIGN_LEFT);
                 agregarCelda(tabla, factura.getCondicionIva(), Element.ALIGN_LEFT);
                 agregarCelda(tabla, factura.getPuntoVentaDescripcion(), Element.ALIGN_LEFT);
                 agregarCelda(tabla, formatoImporte.format(factura.getImporteTotal()), Element.ALIGN_RIGHT);
                 agregarCelda(tabla, String.valueOf(factura.getCantidadItems()), Element.ALIGN_RIGHT);
-                agregarCelda(tabla, "#" + factura.getId(), Element.ALIGN_RIGHT);
+                agregarCelda(tabla, factura.getEstado(), Element.ALIGN_CENTER);
             }
 
             documento.add(tabla);
@@ -233,22 +235,19 @@ public class FacturaReporteExportService {
             int fila = 1;
             for (FacturaReporteDTO factura : facturas) {
                 Row row = hoja.createRow(fila++);
-                row.createCell(0).setCellValue(factura.getIdentificador());
-
-                Cell fecha = row.createCell(1);
+                row.createCell(0).setCellValue("#" + factura.getId());
+                row.createCell(1).setCellValue(numeroVisible(factura));
+                Cell fecha = row.createCell(2);
                 fecha.setCellValue(factura.getFechaEmision());
                 fecha.setCellStyle(estiloFecha);
-
-                row.createCell(2).setCellValue(factura.getClienteDenominacion());
-                row.createCell(3).setCellValue(factura.getCondicionIva());
-                row.createCell(4).setCellValue(factura.getPuntoVentaDescripcion());
-
-                Cell importe = row.createCell(5);
+                row.createCell(3).setCellValue(factura.getClienteDenominacion());
+                row.createCell(4).setCellValue(factura.getCondicionIva());
+                row.createCell(5).setCellValue(factura.getPuntoVentaDescripcion());
+                Cell importe = row.createCell(6);
                 importe.setCellValue(factura.getImporteTotal());
                 importe.setCellStyle(estiloImporte);
-
-                row.createCell(6).setCellValue(factura.getCantidadItems());
-                row.createCell(7).setCellValue("#" + factura.getId());
+                row.createCell(7).setCellValue(factura.getCantidadItems());
+                row.createCell(8).setCellValue(factura.getEstado());
             }
 
             hoja.createFreezePane(0, 1);
@@ -277,7 +276,7 @@ public class FacturaReporteExportService {
     }
 
     private String numeroVisible(FacturaReporteDTO factura) {
-        return factura.getIdentificador();
+        return factura.getNumeroFactura() == null ? "Sin emitir" : factura.getIdentificador();
     }
 
     private void agregarCelda(PdfPTable tabla, String texto, int alineacion) {

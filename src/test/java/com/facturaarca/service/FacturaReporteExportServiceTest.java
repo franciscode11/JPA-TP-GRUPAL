@@ -28,10 +28,10 @@ class FacturaReporteExportServiceTest {
 
         try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(excel))) {
             assertThat(libro.getSheet("Facturas").getRow(0).getCell(0).getStringCellValue())
-                    .isEqualTo("Nro. factura");
-            assertThat(libro.getSheet("Facturas").getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("N.º interno");
+            assertThat(libro.getSheet("Facturas").getRow(1).getCell(1).getStringCellValue())
                     .isEqualTo("00000-00001001");
-            assertThat(libro.getSheet("Facturas").getRow(1).getCell(2).getStringCellValue())
+            assertThat(libro.getSheet("Facturas").getRow(1).getCell(3).getStringCellValue())
                     .isEqualTo("Consumidor Final");
         }
     }
@@ -58,6 +58,32 @@ class FacturaReporteExportServiceTest {
             }
             assertThat(texto.toString()).contains("Producto 0", "Producto 49", "12345678901234",
                     "ANULADA EN EL SISTEMA", "Fecha de baja", "Observaciones de prueba");
+        } finally {
+            lector.close();
+        }
+    }
+
+    @Test
+    void reporteDistingueElNumeroFiscalDelEstadoYDelIdInterno() throws Exception {
+        var emitidaAnulada = factura();
+        emitidaAnulada.setEstado("ANULADA");
+        var borradorAnulado = factura();
+        borradorAnulado.setId(2L);
+        borradorAnulado.setNumeroFactura(null);
+        borradorAnulado.setEstado("ANULADA");
+        var filas = List.of(emitidaAnulada, borradorAnulado);
+        try (var libro = new XSSFWorkbook(new ByteArrayInputStream(service.generarExcel(filas)))) {
+            var hoja = libro.getSheetAt(0);
+            assertThat(hoja.getRow(1).getCell(0).getStringCellValue()).isEqualTo("#1");
+            assertThat(hoja.getRow(1).getCell(1).getStringCellValue()).isEqualTo("00000-00001001");
+            assertThat(hoja.getRow(2).getCell(1).getStringCellValue()).isEqualTo("Sin emitir");
+            assertThat(hoja.getRow(2).getCell(8).getStringCellValue()).isEqualTo("ANULADA");
+        }
+        var lector = new com.lowagie.text.pdf.PdfReader(service.generarPdf(filas));
+        try {
+            String texto = new com.lowagie.text.pdf.parser.PdfTextExtractor(lector).getTextFromPage(1);
+            assertThat(texto).contains("#1", "#2", "00000-00001001", "Sin emitir", "ANULADA");
+            assertThat(texto).doesNotContain("Anulada #");
         } finally {
             lector.close();
         }
