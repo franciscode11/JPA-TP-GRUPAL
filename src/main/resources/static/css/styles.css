@@ -339,9 +339,9 @@ button.boton-cerrar, #cerrar-clientes, #cerrar-articulos, #cerrar-comprobante {
 .total span { color: var(--muted); font-size: .73rem; }
 .total strong { color: var(--ink); font-size: 1.5rem; line-height: 1.2; letter-spacing: -.04em; }
 .estado { display: inline-block; padding: 5px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; font-size: .65rem; font-weight: 780; letter-spacing: .045em; }
-.estado-pendiente { background: #efefec; border-style: dashed; }
+.estado-pendiente { color: #805d13; background: #fff8e6; border-color: #ead59c; }
 .estado-emitida { color: #245a42; background: #edf7f1; border-color: #b8d9c7; }
-.estado-anulada { color: #6e6e69; background: #e8e8e4; text-decoration: line-through; }
+.estado-anulada { color: #9d3535; background: #fff0ef; border-color: #efbdb8; }
 .acciones { display: flex; justify-content: flex-end; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acciones .ayuda-fecha { flex-basis: 100%; margin-top: 2px; color: var(--muted); font-size: .72rem; }
 .modal-comprobante { width: min(800px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; }
@@ -622,3 +622,25 @@ body:has(#modal-comprobante[open]) { overflow: hidden; }
 #modal-comprobante:has(.factura-navegacion:not([hidden])) .modal-contenido {
   display: flex; flex-direction: column; justify-content: space-between; min-height: 100%;
 }
+
+/* Tres renglones reservados mantienen fijos el total y las acciones. */
+.detalle-contenedor {
+  height: 280px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.detalle-tabla { min-width: 1060px; table-layout: fixed; }
+.detalle-tabla th { height: 42px; position: sticky; top: 0; z-index: 1; }
+.detalle-tabla th:nth-child(1) { width: 28%; }
+.detalle-tabla th:nth-child(2) { width: 11%; }
+.detalle-tabla th:nth-child(3), .detalle-tabla th:nth-child(4) { width: 12%; }
+.detalle-tabla th:nth-child(5) { width: 14%; }
+.detalle-tabla th:nth-child(6) { width: 18%; }
+.detalle-tabla th:nth-child(7) { width: 5%; }
+.detalle-tabla tbody tr { height: 78px; }
+.detalle-tabla .tabla-vacia { height: 234px; }
+.detalle-tabla td { padding: 10px 12px; }
+.detalle-tabla td:first-child strong, .detalle-tabla td:first-child small {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.detalle-tabla .control { width: 100%; min-width: 0; }

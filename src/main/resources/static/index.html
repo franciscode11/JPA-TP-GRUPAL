@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-13">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-14">
 </head>
 <body>
   <header class="encabezado">
@@ -71,7 +71,7 @@
           <div><h3>Detalle de artículos</h3><p>Elegí primero la lista de precios y luego el artículo desde el maestro.</p></div>
           <button id="agregar-item" class="boton secundario" type="button"><i data-lucide="package-search" aria-hidden="true"></i><span>Buscar artículo</span></button>
         </div>
-        <div class="tabla-contenedor">
+        <div class="tabla-contenedor detalle-contenedor" role="region" aria-label="Artículos de la factura" tabindex="0">
           <table class="tabla detalle-tabla">
             <thead><tr><th>Artículo</th><th>Lista</th><th>Cantidad</th><th>Bonif. %</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
             <tbody id="detalle-body"><tr><td colspan="7" class="tabla-vacia">Todavía no agregaste artículos.</td></tr></tbody>
@@ -162,6 +162,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-13"></script>
+  <script type="module" src="/js/app.js?v=20261118-14"></script>
 </body>
 </html>
