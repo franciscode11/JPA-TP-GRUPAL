@@ -31,6 +31,7 @@ export interface FacturaReporteDTO {
 }
 
 export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {
+  importeSubtotal: number;
   articuloId: number;
   articuloCodigo: string;
   articuloNombre: string;
@@ -39,6 +40,7 @@ export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {
 }
 
 export interface FacturaEdicionDTO extends Omit<FacturaRequestDTO, "detalles"> {
+  vencimientoCae: string | null;
   id: number;
   numeroFactura: number | null;
   fechaEmision: string;

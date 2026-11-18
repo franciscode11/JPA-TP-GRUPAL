@@ -47,7 +47,8 @@ public class CatalogoService {
     @Transactional(readOnly = true)
     public CatalogosDTO obtenerCatalogos() {
         List<CatalogosDTO.OpcionCatalogoDTO> clientes = unicos(
-                clienteRepository.findAllByOrderByDenominacionAsc().stream()
+                clienteRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 10,
+                        org.springframework.data.domain.Sort.by("denominacion"))).stream()
                         .filter(cliente -> !normalizar(cliente.getDenominacion()).contains("prueba"))
                         .map(cliente -> new CatalogosDTO.OpcionCatalogoDTO(
                                 cliente.getId(), cliente.getDenominacion().trim()
@@ -95,6 +96,18 @@ public class CatalogoService {
         );
 
         return new CatalogosDTO(clientes, condiciones, puntosVenta, monedas, listasPrecio);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaDTO<CatalogosDTO.OpcionCatalogoDTO> buscarClientes(String texto, int pagina, int tamanio) {
+        validarPaginacion(pagina, tamanio);
+        String busqueda = texto == null ? "" : texto.trim();
+        var resultado = clienteRepository.findByDenominacionContainingIgnoreCaseOrCuitCuilContaining(
+                busqueda, busqueda, org.springframework.data.domain.PageRequest.of(pagina, tamanio,
+                        org.springframework.data.domain.Sort.by("denominacion").and(org.springframework.data.domain.Sort.by("id"))));
+        return PaginaDTO.crear(resultado.getContent().stream().map(cliente ->
+                new CatalogosDTO.OpcionCatalogoDTO(cliente.getId(), cliente.getDenominacion() + " · " + cliente.getCuitCuil())).toList(),
+                pagina, tamanio, resultado.getTotalElements());
     }
 
     @Transactional(readOnly = true)

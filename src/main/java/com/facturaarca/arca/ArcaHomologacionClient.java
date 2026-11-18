@@ -76,7 +76,7 @@ public class ArcaHomologacionClient {
         );
     }
 
-    public ResultadoArca emitir(FacturaVenta factura) {
+    public synchronized ResultadoArca emitir(FacturaVenta factura) {
         exigirConfiguracion();
         try {
             TicketAcceso ticket = obtenerTicket();
@@ -107,8 +107,23 @@ public class ArcaHomologacionClient {
 
     private TicketAcceso obtenerTicket() throws Exception {
         TicketAcceso cache = ticketCache.get();
-        if (cache != null && cache.expira().isAfter(Instant.now().plusSeconds(300))) {
+        if (cache != null && cache.expira().isAfter(Instant.now().plusSeconds(30))) {
             return cache;
+        }
+        Path archivoTicket = Path.of(config.getPrivateKeyPath()).toAbsolutePath().resolveSibling(".wsaa-" + config.cuitNumerica() + ".properties");
+        if (Files.isRegularFile(archivoTicket)) {
+            try (var entrada = Files.newInputStream(archivoTicket)) {
+                var datos = new java.util.Properties();
+                datos.load(entrada);
+                TicketAcceso guardado = new TicketAcceso(datos.getProperty("token"), datos.getProperty("sign"),
+                        Instant.parse(datos.getProperty("expiration")));
+                if (guardado.expira().isAfter(Instant.now().plusSeconds(30))) {
+                    ticketCache.set(guardado);
+                    return guardado;
+                }
+            } catch (java.io.IOException | RuntimeException ignorada) {
+                // Una caché dañada no impide solicitar credenciales nuevas.
+            }
         }
 
         String tra = crearTra();
@@ -122,6 +137,17 @@ public class ArcaHomologacionClient {
         Instant expiracion = OffsetDateTime.parse(texto(documento, "expirationTime")).toInstant();
         TicketAcceso nuevo = new TicketAcceso(token, sign, expiracion);
         ticketCache.set(nuevo);
+        try {
+            if (!Files.exists(archivoTicket)) Files.createFile(archivoTicket,
+                    java.nio.file.attribute.PosixFilePermissions.asFileAttribute(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")));
+            var datos = new java.util.Properties();
+            datos.setProperty("token", token);
+            datos.setProperty("sign", sign);
+            datos.setProperty("expiration", expiracion.toString());
+            try (var salida = Files.newOutputStream(archivoTicket)) { datos.store(salida, "WSAA homologacion"); }
+        } catch (java.io.IOException | UnsupportedOperationException ignorada) {
+            // El ticket continúa disponible en memoria si no se puede persistir.
+        }
         return nuevo;
     }
 

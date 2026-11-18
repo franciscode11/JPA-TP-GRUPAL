@@ -15,6 +15,7 @@ public record FacturaEdicionDTO(
         Long tipoMonedaId,
         String estado,
         String observaciones,
-        List<FacturaDetalleEdicionDTO> detalles
+        List<FacturaDetalleEdicionDTO> detalles,
+        @JsonFormat(pattern = "yyyy-MM-dd") Date vencimientoCae
 ) {
 }

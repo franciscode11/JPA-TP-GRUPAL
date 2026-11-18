@@ -157,9 +157,11 @@ public class FacturaService {
                                 detalle.getListaPrecioArticulo().getListaPrecio().getDenominacion(),
                                 detalle.getPrecioUnitario(),
                                 detalle.getCantidad(),
-                                detalle.getPorcentajeBonificacion()
+                                detalle.getPorcentajeBonificacion(),
+                                detalle.getImporteSubtotal()
                         ))
-                        .toList()
+                        .toList(),
+                factura.getCaeFechaVencimiento()
         );
     }
 
@@ -275,7 +277,7 @@ public class FacturaService {
             BigDecimal neto = cantidad.multiply(precio)
                     .multiply(BigDecimal.ONE.subtract(bonificacion))
                     .setScale(2, RoundingMode.HALF_UP);
-            BigDecimal iva = neto.multiply(ALICUOTA_IVA).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal iva = BigDecimal.ZERO;
             BigDecimal subtotal = neto.add(iva).setScale(2, RoundingMode.HALF_UP);
 
             FacturaVentaDetalle detalle = new FacturaVentaDetalle();

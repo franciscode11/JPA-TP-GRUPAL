@@ -50,4 +50,5 @@ frontend/node_modules/
 *.p12
 *.pfx
 ticket-*.properties
+.wsaa-*.properties
 .env

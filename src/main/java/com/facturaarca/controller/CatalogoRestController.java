@@ -32,4 +32,12 @@ public class CatalogoRestController {
     ) {
         return catalogoService.buscarArticulos(listaPrecioId, q, pagina, tamanio);
     }
+
+    @GetMapping("/clientes")
+    public PaginaDTO<CatalogosDTO.OpcionCatalogoDTO> buscarClientes(
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "8") int tamanio) {
+        return catalogoService.buscarClientes(q, pagina, tamanio);
+    }
 }

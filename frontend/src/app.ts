@@ -48,6 +48,27 @@ let ultimaPaginaArticulos: PaginaDTO<ArticuloCatalogoDTO> | null = null;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 let temporizadorBusqueda: number | undefined;
 let facturasVisibles: FacturaReporteDTO[] = [];
+let destinoCliente = "cliente-id";
+let paginaClientes = 0;
+let busquedaClientes = 0;
+
+async function cargarClientes(): Promise<void> {
+  const solicitud = ++busquedaClientes;
+  try {
+    const query = new URLSearchParams({ q: valor("buscar-cliente"), pagina: String(paginaClientes), tamanio: "8" });
+    const respuesta = await fetch(`/api/catalogos/clientes?${query}`);
+    if (!respuesta.ok) throw new Error("No se pudieron cargar los clientes.");
+    const pagina = await respuesta.json() as PaginaDTO<OpcionCatalogoDTO>;
+    if (solicitud !== busquedaClientes) return;
+    elemento("#clientes-resultados").innerHTML = pagina.contenido.length
+      ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
+      : '<div class="resultado-vacio"><i data-lucide="user-search"></i>No hay clientes para esta búsqueda.</div>';
+    elemento<HTMLButtonElement>("#clientes-anterior").disabled = pagina.primera;
+    elemento<HTMLButtonElement>("#clientes-siguiente").disabled = pagina.ultima;
+    elemento("#clientes-pagina").textContent = `Página ${pagina.pagina + 1} de ${Math.max(1, pagina.totalPaginas)}`;
+    renderizarIconos();
+  } catch (error) { notificar((error as Error).message, "error"); }
+}
 
 function elemento<T extends HTMLElement>(selector: string): T {
   return document.querySelector<T>(selector)!;
@@ -81,9 +102,11 @@ function renderizarIconos(): void {
 
 function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
   const aviso = elemento<HTMLElement>("#aviso");
-  aviso.textContent = mensaje;
+  aviso.innerHTML = `<i data-lucide="${tipo === "error" ? "circle-alert" : "circle-check"}"></i><div><strong>${tipo === "error" ? "No se pudo completar" : "Listo"}</strong>${mensaje.length > 160 ? `<details><summary>Ver detalle del resultado</summary><p>${escapar(mensaje)}</p></details>` : `<p>${escapar(mensaje)}</p>`}</div><button type="button" aria-label="Cerrar aviso"><i data-lucide="x"></i></button>`;
   aviso.className = `aviso visible ${tipo}`;
-  window.setTimeout(() => aviso.classList.remove("visible"), 4200);
+  aviso.querySelector("button")?.addEventListener("click", () => aviso.classList.remove("visible"));
+  renderizarIconos();
+  if (tipo === "exito") window.setTimeout(() => aviso.classList.remove("visible"), 6000);
 }
 
 const MESES = [
@@ -321,6 +344,8 @@ function reiniciarFormulario(): void {
   facturaEditandoId = null;
   elemento<HTMLElement>("#titulo-alta").textContent = "Nueva factura";
   elemento<HTMLFormElement>("#factura-form").reset();
+  const condicionDefault = catalogos.condicionesIva.find(condicion => condicion.nombre === "Consumidor Final");
+  if (condicionDefault) elemento<HTMLSelectElement>("#condicion-iva-id").value = String(condicionDefault.id);
   elemento<HTMLInputElement>("#fecha-emision").value = fechaIso(new Date());
   items = [];
   renderizarDetalles();
@@ -336,7 +361,7 @@ function actualizarBotonGuardar(texto: string, icono: string): void {
 
 function subtotal(item: ItemFormulario): number {
   const neto = item.cantidad * item.precio * (1 - item.porcentajeBonificacion / 100);
-  return neto * 1.21;
+  return neto;
 }
 
 function renderizarDetalles(): void {
@@ -595,7 +620,12 @@ async function cargarFacturaParaEditar(id: number): Promise<void> {
     facturaEditandoId = factura.id;
     elemento<HTMLElement>("#titulo-alta").textContent = `Editar borrador #${factura.id}`;
     elemento<HTMLInputElement>("#fecha-emision").value = factura.fechaEmision;
-    elemento<HTMLSelectElement>("#cliente-id").value = String(factura.clienteId);
+    const clienteSelect = elemento<HTMLSelectElement>("#cliente-id");
+    if (!Array.from(clienteSelect.options).some(opcion => opcion.value === String(factura.clienteId))) {
+      const reporte = facturasVisibles.find(actual => actual.id === id);
+      clienteSelect.add(new Option(reporte?.clienteDenominacion ?? `Cliente #${factura.clienteId}`, String(factura.clienteId)));
+    }
+    clienteSelect.value = String(factura.clienteId);
     elemento<HTMLSelectElement>("#condicion-iva-id").value = String(factura.condicionIvaId);
     elemento<HTMLSelectElement>("#punto-venta-id").value = String(factura.puntoVentaId);
     elemento<HTMLSelectElement>("#tipo-moneda-id").value = String(factura.tipoMonedaId);
@@ -628,9 +658,9 @@ async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
     <h2 id="comprobante-titulo">Factura #${String(reporte.numeroFactura).padStart(8, "0")}</h2>
     <p>${escapar(reporte.fechaEmision)} · ${escapar(reporte.puntoVentaDescripcion)}</p>
     <p><strong>${escapar(reporte.clienteDenominacion)}</strong><br>${escapar(reporte.condicionIva)}</p>
-    <p class="comprobante-cae"><strong>EMITIDA · CAE ${escapar(reporte.cae)}</strong></p>
+    <p class="comprobante-cae"><strong>EMITIDA · CAE ${escapar(reporte.cae)}</strong><br>Vencimiento del CAE: ${escapar(factura.vencimientoCae)}</p>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
-    ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.precioUnitario * detalle.cantidad * (1 - detalle.porcentajeBonificacion / 100) * 1.21)}</td></tr>`).join("")}
+    ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
     </tbody></table></div>
     <p class="comprobante-total">Total ${dinero(reporte.importeTotal)}</p>
     ${factura.observaciones ? `<p>${escapar(factura.observaciones)}</p>` : ""}`;
@@ -732,6 +762,29 @@ async function cargarEstadoArca(): Promise<void> {
 }
 
 function enlazarEventos(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-buscar-cliente]").forEach(boton => boton.addEventListener("click", () => {
+    destinoCliente = boton.dataset.buscarCliente!;
+    paginaClientes = 0;
+    elemento<HTMLInputElement>("#buscar-cliente").value = "";
+    const modal = elemento<HTMLDialogElement>("#modal-clientes");
+    modal.showModal(); modal.classList.add("visible");
+    void cargarClientes();
+  }));
+  elemento("#cerrar-clientes").addEventListener("click", () => elemento<HTMLDialogElement>("#modal-clientes").close());
+  elemento("#buscar-cliente").addEventListener("input", () => { paginaClientes = 0; void cargarClientes(); });
+  elemento("#clientes-anterior").addEventListener("click", () => { paginaClientes--; void cargarClientes(); });
+  elemento("#clientes-siguiente").addEventListener("click", () => { paginaClientes++; void cargarClientes(); });
+  elemento("#clientes-resultados").addEventListener("click", evento => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("[data-cliente]");
+    if (!boton) return;
+    const select = elemento<HTMLSelectElement>(`#${destinoCliente}`);
+    if (!Array.from(select.options).some(opcion => opcion.value === boton.dataset.cliente)) {
+      select.add(new Option(boton.dataset.nombre!, boton.dataset.cliente!));
+    }
+    select.value = boton.dataset.cliente!;
+    personalizarControles(select.parentElement!);
+    elemento<HTMLDialogElement>("#modal-clientes").close();
+  });
   elemento<HTMLButtonElement>("#cerrar-comprobante").addEventListener("click", () => {
     elemento<HTMLDialogElement>("#modal-comprobante").close();
   });

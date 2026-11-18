@@ -8,6 +8,7 @@ public record FacturaDetalleEdicionDTO(
         String listaPrecioNombre,
         double precioUnitario,
         double cantidad,
-        double porcentajeBonificacion
+        double porcentajeBonificacion,
+        double importeSubtotal
 ) {
 }

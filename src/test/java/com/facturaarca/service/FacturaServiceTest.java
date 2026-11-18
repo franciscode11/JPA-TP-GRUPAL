@@ -117,7 +117,7 @@ class FacturaServiceTest {
         FacturaReporteDTO resultado = service.crear(request);
 
         assertThat(resultado.getId()).isEqualTo(8L);
-        assertThat(resultado.getImporteTotal()).isEqualTo(2178d);
+        assertThat(resultado.getImporteTotal()).isEqualTo(1800d);
         assertThat(resultado.getCantidadItems()).isEqualTo(1);
         assertThat(resultado.getEstado()).isEqualTo("PENDIENTE");
         assertThat(resultado.getNumeroFactura()).isNull();
