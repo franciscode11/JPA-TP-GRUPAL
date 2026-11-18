@@ -47,6 +47,7 @@ let paginaArticulos = 0;
 let ultimaPaginaArticulos: PaginaDTO<ArticuloCatalogoDTO> | null = null;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 let temporizadorBusqueda: number | undefined;
+let facturasVisibles: FacturaReporteDTO[] = [];
 
 function elemento<T extends HTMLElement>(selector: string): T {
   return document.querySelector<T>(selector)!;
@@ -479,7 +480,7 @@ function actualizarDescargas(): void {
 function accionesFactura(factura: FacturaReporteDTO): string {
   if (factura.estado !== "PENDIENTE") {
     const detalle = factura.cae ? `CAE ${escapar(factura.cae)}` : "Comprobante bloqueado";
-    return `<span class="accion-bloqueada"><i data-lucide="lock-keyhole"></i>${detalle}</span>`;
+    return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button><span class="accion-bloqueada"><i data-lucide="lock-keyhole"></i>${detalle}</span>`;
   }
   const emitirDeshabilitado = !estadoArca?.configurada ? "disabled" : "";
   const tituloEmitir = estadoArca?.configurada ? "Solicitar CAE en homologación" : escapar(estadoArca?.mensaje);
@@ -493,6 +494,7 @@ function accionesFactura(factura: FacturaReporteDTO): string {
 }
 
 function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
+  facturasVisibles = pagina.contenido;
   elemento<HTMLElement>("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
   const cuerpo = elemento<HTMLTableSectionElement>("#facturas-body");
   if (pagina.contenido.length === 0) {
@@ -618,6 +620,24 @@ async function cargarFacturaParaEditar(id: number): Promise<void> {
   }
 }
 
+async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
+  const factura = await servicio.obtenerFactura(reporte.id);
+  const modal = elemento<HTMLDialogElement>("#modal-comprobante");
+  elemento<HTMLElement>("#comprobante-contenido").innerHTML = `
+    <p class="modal-tipo">Homologación · Sin validez fiscal</p>
+    <h2 id="comprobante-titulo">Factura #${String(reporte.numeroFactura).padStart(8, "0")}</h2>
+    <p>${escapar(reporte.fechaEmision)} · ${escapar(reporte.puntoVentaDescripcion)}</p>
+    <p><strong>${escapar(reporte.clienteDenominacion)}</strong><br>${escapar(reporte.condicionIva)}</p>
+    <p class="comprobante-cae"><strong>EMITIDA · CAE ${escapar(reporte.cae)}</strong></p>
+    <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
+    ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.precioUnitario * detalle.cantidad * (1 - detalle.porcentajeBonificacion / 100) * 1.21)}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="comprobante-total">Total ${dinero(reporte.importeTotal)}</p>
+    ${factura.observaciones ? `<p>${escapar(factura.observaciones)}</p>` : ""}`;
+  modal.showModal();
+  modal.classList.add("visible");
+}
+
 function pedirConfirmacion(datos: Confirmacion): Promise<boolean> {
   const modal = elemento<HTMLDialogElement>("#modal-confirmacion");
   elemento<HTMLElement>(".modal-confirmacion .modal-tipo").textContent = datos.tipo;
@@ -649,6 +669,15 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
   const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("button[data-id]");
   if (!boton) return;
   const id = Number(boton.dataset.id);
+  if (boton.classList.contains("ver")) {
+    try {
+      const reporte = facturasVisibles.find((factura) => factura.id === id);
+      if (reporte) await mostrarComprobante(reporte);
+    } catch (error) {
+      notificar((error as Error).message, "error");
+    }
+    return;
+  }
   if (boton.classList.contains("editar")) {
     await cargarFacturaParaEditar(id);
     return;
@@ -667,10 +696,11 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
       const factura = await servicio.emitirEnArca(id);
       if (factura.estado === "EMITIDA" && factura.cae) {
         notificar(`ARCA aprobó la factura. CAE ${factura.cae}.`);
+        await mostrarComprobante(factura);
       } else {
         notificar(
           factura.motivoRechazo
-            ? `ARCA rechazó el comprobante: ${factura.motivoRechazo}`
+            ? `ARCA rechazó el borrador #${id}: ${factura.motivoRechazo}`
             : "ARCA no aprobó el comprobante. Revisá los datos e intentá nuevamente.",
           "error",
         );
@@ -702,6 +732,9 @@ async function cargarEstadoArca(): Promise<void> {
 }
 
 function enlazarEventos(): void {
+  elemento<HTMLButtonElement>("#cerrar-comprobante").addEventListener("click", () => {
+    elemento<HTMLDialogElement>("#modal-comprobante").close();
+  });
   elemento<HTMLButtonElement>("#mostrar-factura").addEventListener("click", () => {
     reiniciarFormulario();
     abrirFormulario();

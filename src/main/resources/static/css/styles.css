@@ -333,7 +333,10 @@ textarea.control { min-height: 96px; padding-top: 12px; resize: vertical; line-h
 .estado-pendiente { background: #efefec; border-style: dashed; }
 .estado-emitida { color: #245a42; background: #edf7f1; border-color: #b8d9c7; }
 .estado-anulada { color: #6e6e69; background: #e8e8e4; text-decoration: line-through; }
-.acciones { display: flex; align-items: center; gap: 7px; min-width: 315px; }
+.acciones { display: flex; align-items: center; gap: 7px; min-width: 315px; flex-wrap: wrap; }
+.modal-comprobante { width: min(850px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; }
+.comprobante-total { text-align: right; font-size: 1.4rem; font-weight: 750; }
+.comprobante-cae { padding: 12px; background: #edf7f1; color: #245a42; border-radius: 8px; }
 .boton-tabla {
   min-height: 32px;
   padding: 6px 9px;
