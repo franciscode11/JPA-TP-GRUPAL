@@ -169,4 +169,25 @@ class FacturaServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("montoMinimo");
     }
+    @Test
+    void eliminarConservaLosDetallesYRegistraBajaLogica() {
+        FacturaVenta factura = new FacturaVenta();
+        factura.setEstado("PENDIENTE");
+        var detalle = new com.facturaarca.model.FacturaVentaDetalle();
+        factura.agregarDetalle(detalle);
+        when(facturaRepository.findOneById(8L)).thenReturn(Optional.of(factura));
+
+        service.eliminar(8L);
+
+        assertThat(factura.getEstado()).isEqualTo("ANULADA");
+        assertThat(factura.getFechaBaja()).isNotNull();
+        assertThat(factura.getFechaAnulacion()).isEqualTo(factura.getFechaBaja());
+        assertThat(factura.getUsuarioBaja()).isNotNull();
+        assertThat(factura.getDetalles()).containsExactly(detalle);
+        org.mockito.Mockito.verify(facturaRepository).saveAndFlush(factura);
+        org.mockito.Mockito.verify(facturaRepository, org.mockito.Mockito.never()).delete(any());
+        assertThatThrownBy(() -> service.eliminar(8L)).isInstanceOf(IllegalStateException.class);
+        factura.setEstado("EMITIDA");
+        assertThatThrownBy(() -> service.eliminar(8L)).isInstanceOf(IllegalStateException.class);
+    }
 }

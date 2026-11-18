@@ -7,7 +7,7 @@ Guía de estudio y comandos de arranque: [Del borrador al comprobante](Guia_para
 3. Pulsar Nueva factura. La fecha se elige con calendario y el estado inicial es PENDIENTE.
 4. Buscar el cliente en el explorador, por nombre o documento. Su condición de IVA se completa automáticamente y no se edita desde la factura.
 5. Buscar un producto Apple en su lista de precios Mayorista o Minorista. Agregar cantidad y bonificación. Los precios en pesos son orientativos para el laboratorio; los iPod son reacondicionados.
-6. Guardar el borrador. Se puede editar o eliminar mientras siga pendiente.
+6. Guardar el borrador. Se puede editar o dar de baja mientras siga pendiente. La baja conserva el comprobante ANULADO.
 7. Solicitar CAE en homologación. ARCA consulta y valida los datos; una respuesta rechazada conserva el borrador y muestra su motivo.
 8. Si ARCA aprueba, guardar número, CAE y vencimiento; bloquear edición y eliminación y abrir Ver factura.
 
@@ -36,4 +36,10 @@ En las ventas locales de esta demo el emisor es monotributista y emite Factura C
 
 ## Alcance revisado
 
-La variante presentada integra ARCA en homologación, incluye filtros, exploradores y paginación y bloquea los comprobantes autorizados. El TP integrador actualizado especifica una variante con CAE simulado y anulación lógica de emitidas. En ambas se elimina físicamente un borrador. La página 9 de la guía compara los alcances y las diferencias de entrega.
+La variante presentada integra ARCA en homologación, incluye filtros, exploradores y paginación y bloquea los comprobantes autorizados. El TP integrador actualizado especifica una variante con CAE simulado y anulación lógica de emitidas. Nuestra demo conserva los pendientes dados de baja como ANULADA por pedido del grupo. La página 9 de la guía compara los alcances y las diferencias de entrega.
+
+## Actualización del arranque y de la baja lógica
+
+Ejecutar com.facturaarca.Main desde IntelliJ inicia el servidor web. Maven utiliza el mismo punto de entrada. La configuración opcional de homologación se puede guardar fuera del repositorio en ~/.config/factura-arca/homologacion/application.properties.
+
+Por pedido del grupo, Eliminar ahora da de baja sólo pendientes: conserva cabecera y detalles, marca ANULADA y registra fechaBaja, fechaAnulacion y usuarioBaja. El filtro ANULADA y Ver factura permiten consultar el historial. Las emitidas con CAE siguen bloqueadas. Esta baja de pendientes difiere del DELETE físico del integrador actualizado.

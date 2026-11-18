@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-12">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-13">
 </head>
 <body>
   <header class="encabezado">
@@ -28,7 +28,7 @@
         <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button></label>
         <label>Estado
           <select id="filtro-estado" class="control">
-            <option value="">Todos</option><option>PENDIENTE</option><option>EMITIDA</option>
+            <option value="">Todos</option><option>PENDIENTE</option><option>EMITIDA</option><option>ANULADA</option>
           </select>
         </label>
         <label>Información ARCA
@@ -162,6 +162,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-12"></script>
+  <script type="module" src="/js/app.js?v=20261118-13"></script>
 </body>
 </html>

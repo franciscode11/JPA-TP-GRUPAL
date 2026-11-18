@@ -71,7 +71,7 @@ public class FacturaReporteDTO {
     }
 
     public String getIdentificador() {
-        return numeroFactura == null ? "Borrador #" + id
+        return numeroFactura == null ? ("ANULADA".equals(estado) ? "Anulada #" : "Borrador #") + id
                 : String.format("%05d-%08d", puntoVentaNumero, numeroFactura);
     }
 

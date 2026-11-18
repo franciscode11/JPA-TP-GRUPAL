@@ -672,14 +672,15 @@ async function cargarFacturaParaEditar(id) {
 }
 async function mostrarComprobante(reporte) {
     const factura = await servicio.obtenerFactura(reporte.id);
+    const anulada = factura.estado === "ANULADA";
     const modal = elemento("#modal-comprobante");
     elemento("#comprobante-contenido").innerHTML = `
     <header class="factura-encabezado">
       <div>
         <p class="modal-tipo">Comprobante #${reporte.id}</p>
-        <h2 id="comprobante-titulo">Factura C <span>${escapar(reporte.identificador)}</span></h2>
+        <h2 id="comprobante-titulo">${anulada ? "Comprobante anulado" : "Factura C"} <span>${anulada ? "#" + reporte.id : escapar(reporte.identificador)}</span></h2>
       </div>
-      <span class="estado estado-emitida"><i data-lucide="check" aria-hidden="true"></i>Emitida</span>
+      <span class="estado estado-${anulada ? "anulada" : "emitida"}"><i data-lucide="${anulada ? "ban" : "check"}" aria-hidden="true"></i>${anulada ? "Anulada" : "Emitida"}</span>
     </header>
     <dl class="factura-datos">
       <div class="factura-cliente">
@@ -709,9 +710,9 @@ async function mostrarComprobante(reporte) {
     </section>
     ${factura.observaciones ? `<section class="factura-nota"><h3>Observaciones</h3><p>${escapar(factura.observaciones)}</p></section>` : ""}
     <section class="factura-autorizacion" aria-labelledby="factura-autorizacion-titulo">
-      <h3 id="factura-autorizacion-titulo"><i data-lucide="badge-check" aria-hidden="true"></i>Autorización ARCA</h3>
-      <dl><div><dt>CAE</dt><dd>${escapar(reporte.cae)}</dd></div>
-        <div><dt>Vencimiento</dt><dd>${fechaVisible(factura.vencimientoCae || "", "Sin fecha")}</dd></div></dl>
+      <h3 id="factura-autorizacion-titulo">${anulada ? "Baja del comprobante" : "Autorización ARCA"}</h3>
+      ${anulada ? `<dl><div><dt>Fecha y hora de baja</dt><dd>${fechaVisible((factura.fechaBaja || "").slice(0, 10), "Sin fecha")} ${escapar((factura.fechaBaja || "").slice(11))}</dd></div></dl>` : `<dl><div><dt>CAE</dt><dd>${escapar(reporte.cae)}</dd></div>
+        <div><dt>Vencimiento</dt><dd>${fechaVisible(factura.vencimientoCae || "", "Sin fecha")}</dd></div></dl>`}
     </section>`;
     renderizarIconos();
     modal.showModal();
@@ -792,14 +793,14 @@ async function accionFactura(evento) {
             const confirmada = await pedirConfirmacion({
                 tipo: "Eliminar borrador",
                 titulo: `¿Eliminar ${boton.dataset.etiqueta}?`,
-                descripcion: "Se borrará el comprobante pendiente y todos sus renglones. Esta acción no se puede deshacer.",
+                descripcion: "Quedará como ANULADA en el historial, con fecha de baja. Se conservarán sus artículos y no podrá editarse ni emitirse.",
                 confirmar: "Eliminar",
                 accion: "eliminar",
             });
             if (!confirmada)
                 return;
             await servicio.eliminarFactura(id);
-            notificar("La factura pendiente fue eliminada.");
+            notificar("El comprobante quedó ANULADO y se conserva en el historial.");
         }
         await cargarFacturas();
     }

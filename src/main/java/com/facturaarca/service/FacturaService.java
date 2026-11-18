@@ -168,7 +168,8 @@ public class FacturaService {
                 factura.getCaeFechaVencimiento(),
                 (Integer.valueOf(96).equals(factura.getCliente().getTipoDocumento()) ? "DNI " : "CUIT/CUIL ")
                         + (factura.getCliente().getNumeroDocumento() == null
-                        ? factura.getCliente().getCuitCuil() : factura.getCliente().getNumeroDocumento())
+                        ? factura.getCliente().getCuitCuil() : factura.getCliente().getNumeroDocumento()),
+                factura.getFechaBaja()
         );
     }
 
@@ -245,11 +246,18 @@ public class FacturaService {
         FacturaVenta factura = buscarFactura(id, true);
         if (!"PENDIENTE".equals(factura.getEstado())) {
             throw new IllegalStateException(
-                    "Una factura emitida no se elimina. Para corregirla corresponde una nota de crédito"
+                    "Sólo se pueden dar de baja comprobantes pendientes"
             );
         }
-        facturaRepository.delete(factura);
-        facturaRepository.flush();
+        Date ahora = new Date();
+        Usuario usuario = obtenerUsuarioSistema();
+        factura.setEstado("ANULADA");
+        factura.setFechaAnulacion(ahora);
+        factura.setFechaBaja(ahora);
+        factura.setUsuarioBaja(usuario);
+        factura.setFechaModificacion(ahora);
+        factura.setUsuarioModificacion(usuario);
+        facturaRepository.saveAndFlush(factura);
     }
 
     private void validarCondicionDelCliente(FacturaVenta factura) {
