@@ -27,7 +27,7 @@ async function cargarClientes() {
         if (solicitud !== busquedaClientes)
             return;
         elemento("#clientes-resultados").innerHTML = pagina.contenido.length
-            ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
+            ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-condicion="${cliente.condicionIvaId ?? ""}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
             : '<div class="resultado-vacio"><i data-lucide="user-search"></i>No hay clientes para esta búsqueda.</div>';
         elemento("#clientes-anterior").disabled = pagina.primera;
         elemento("#clientes-siguiente").disabled = pagina.ultima;
@@ -269,7 +269,7 @@ function opciones(datos, inicial) {
     return primera + datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 function cargarCatalogos() {
-    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes);
+    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes, "Elegir cliente");
     elemento("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
     elemento("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
     elemento("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -513,6 +513,10 @@ async function cargarFacturas() {
 }
 async function guardarFactura(evento) {
     evento.preventDefault();
+    if (!valor("cliente-id")) {
+        notificar("Elegí un cliente desde el buscador.", "error");
+        return;
+    }
     if (!valor("fecha-emision")) {
         notificar("Elegí la fecha de emisión.", "error");
         return;
@@ -607,7 +611,7 @@ async function mostrarComprobante(reporte) {
     const modal = elemento("#modal-comprobante");
     elemento("#comprobante-contenido").innerHTML = `
     <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>#${String(reporte.numeroFactura).padStart(8, "0")}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
-    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
+    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
     ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
     </tbody></table></div>
@@ -734,6 +738,10 @@ function enlazarEventos() {
             select.add(new Option(boton.dataset.nombre, boton.dataset.cliente));
         }
         select.value = boton.dataset.cliente;
+        if (destinoCliente === "cliente-id" && boton.dataset.condicion) {
+            elemento("#condicion-iva-id").value = boton.dataset.condicion;
+            personalizarControles(elemento("#factura-form"));
+        }
         personalizarControles(select.parentElement);
         elemento("#modal-clientes").close();
     });

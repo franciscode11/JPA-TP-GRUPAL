@@ -41,6 +41,7 @@ export interface FacturaDetalleEdicionDTO extends FacturaDetalleRequestDTO {
 
 export interface FacturaEdicionDTO extends Omit<FacturaRequestDTO, "detalles"> {
   vencimientoCae: string | null;
+  documentoCliente: string;
   id: number;
   numeroFactura: number | null;
   fechaEmision: string;
@@ -67,6 +68,7 @@ export interface FacturaFiltrosDTO {
 export interface OpcionCatalogoDTO {
   id: number;
   nombre: string;
+  condicionIvaId?: number | null;
 }
 
 export interface ArticuloCatalogoDTO {

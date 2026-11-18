@@ -63,7 +63,7 @@ async function cargarClientes(): Promise<void> {
     const pagina = await respuesta.json() as PaginaDTO<OpcionCatalogoDTO>;
     if (solicitud !== busquedaClientes) return;
     elemento("#clientes-resultados").innerHTML = pagina.contenido.length
-      ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
+      ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-condicion="${cliente.condicionIvaId ?? ""}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
       : '<div class="resultado-vacio"><i data-lucide="user-search"></i>No hay clientes para esta búsqueda.</div>';
     elemento<HTMLButtonElement>("#clientes-anterior").disabled = pagina.primera;
     elemento<HTMLButtonElement>("#clientes-siguiente").disabled = pagina.ultima;
@@ -322,7 +322,7 @@ function opciones(datos: OpcionCatalogoDTO[], inicial?: string): string {
 }
 
 function cargarCatalogos(): void {
-  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes);
+  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Elegir cliente");
   elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva);
   elemento<HTMLSelectElement>("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
   elemento<HTMLSelectElement>("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -577,6 +577,10 @@ async function cargarFacturas(): Promise<void> {
 
 async function guardarFactura(evento: SubmitEvent): Promise<void> {
   evento.preventDefault();
+  if (!valor("cliente-id")) {
+    notificar("Elegí un cliente desde el buscador.", "error");
+    return;
+  }
   if (!valor("fecha-emision")) {
     notificar("Elegí la fecha de emisión.", "error");
     return;
@@ -671,7 +675,7 @@ async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
   const modal = elemento<HTMLDialogElement>("#modal-comprobante");
   elemento<HTMLElement>("#comprobante-contenido").innerHTML = `
     <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>#${String(reporte.numeroFactura).padStart(8, "0")}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
-    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
+    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
     ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
     </tbody></table></div>
@@ -797,6 +801,10 @@ function enlazarEventos(): void {
       select.add(new Option(boton.dataset.nombre!, boton.dataset.cliente!));
     }
     select.value = boton.dataset.cliente!;
+    if (destinoCliente === "cliente-id" && boton.dataset.condicion) {
+      elemento<HTMLSelectElement>("#condicion-iva-id").value = boton.dataset.condicion;
+      personalizarControles(elemento("#factura-form"));
+    }
     personalizarControles(select.parentElement!);
     elemento<HTMLDialogElement>("#modal-clientes").close();
   });

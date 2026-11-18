@@ -25,6 +25,13 @@ public class Cliente extends AuditoriaApp {
     @Column(nullable = false)
     private String denominacion;
 
+    private Integer tipoDocumento;
+    private String numeroDocumento;
+
+    @jakarta.persistence.ManyToOne
+    @JoinColumn(name = "condicion_iva_id")
+    private CondicionIva condicionIva;
+
     @OneToOne
     @JoinColumn(name = "contacto_id", nullable = false)
     @ToString.Exclude

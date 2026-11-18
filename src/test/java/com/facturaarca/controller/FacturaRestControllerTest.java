@@ -103,7 +103,7 @@ class FacturaRestControllerTest {
                 7L, 1001L, fecha(2026, 3, 15), 2L, 5L, 1L, 1L,
                 "PENDIENTE", "Entrega acordada", List.of(new FacturaDetalleEdicionDTO(
                         9L, 10L, "ART-9", "Teclado", "Minorista", 1000, 2d, 10d, 1800d
-                )), null
+                )), null, "CUIT/CUIL 20123456786"
         );
         when(facturaService.obtenerParaEdicion(7L)).thenReturn(factura);
 

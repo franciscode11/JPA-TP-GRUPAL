@@ -161,7 +161,10 @@ public class FacturaService {
                                 detalle.getImporteSubtotal()
                         ))
                         .toList(),
-                factura.getCaeFechaVencimiento()
+                factura.getCaeFechaVencimiento(),
+                (Integer.valueOf(96).equals(factura.getCliente().getTipoDocumento()) ? "DNI " : "CUIT/CUIL ")
+                        + (factura.getCliente().getNumeroDocumento() == null
+                        ? factura.getCliente().getCuitCuil() : factura.getCliente().getNumeroDocumento())
         );
     }
 

@@ -280,6 +280,9 @@ public class ArcaHomologacionClient {
     }
 
     private int tipoDocumento(FacturaVenta factura) {
+        if (factura.getCliente() != null && factura.getCliente().getTipoDocumento() != null) {
+            return factura.getCliente().getTipoDocumento();
+        }
         return numeroDocumento(factura) == 0 ? 99 : 80;
     }
 
@@ -291,6 +294,15 @@ public class ArcaHomologacionClient {
     }
 
     private long numeroDocumento(FacturaVenta factura) {
+        if (factura.getCliente() != null && factura.getCliente().getNumeroDocumento() != null) {
+            String digitos = factura.getCliente().getNumeroDocumento().replaceAll("\\D", "");
+            if (digitos.isBlank()) throw new ArcaException("El cliente no tiene un número de documento válido");
+            if (Integer.valueOf(96).equals(factura.getCliente().getTipoDocumento())
+                    && factura.getCondicionIva().getCodigoAfip() != 5) {
+                throw new ArcaException("Para identificar un receptor monotributista o responsable inscripto necesitás su CUIT, no su DNI.");
+            }
+            return Long.parseLong(digitos);
+        }
         if (factura.getCondicionIva() != null
                 && factura.getCondicionIva().getCodigoAfip() == 5) {
             return 0;

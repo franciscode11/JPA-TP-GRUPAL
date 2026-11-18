@@ -106,7 +106,9 @@ public class CatalogoService {
                 busqueda, busqueda, org.springframework.data.domain.PageRequest.of(pagina, tamanio,
                         org.springframework.data.domain.Sort.by("denominacion").and(org.springframework.data.domain.Sort.by("id"))));
         return PaginaDTO.crear(resultado.getContent().stream().map(cliente ->
-                new CatalogosDTO.OpcionCatalogoDTO(cliente.getId(), cliente.getDenominacion() + " · " + cliente.getCuitCuil())).toList(),
+                new CatalogosDTO.OpcionCatalogoDTO(cliente.getId(), cliente.getDenominacion() + " · "
+                        + (cliente.getNumeroDocumento() == null ? cliente.getCuitCuil() : cliente.getNumeroDocumento()),
+                        cliente.getCondicionIva() == null ? null : cliente.getCondicionIva().getId())).toList(),
                 pagina, tamanio, resultado.getTotalElements());
     }
 

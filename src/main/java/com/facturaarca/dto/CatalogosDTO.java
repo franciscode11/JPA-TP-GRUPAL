@@ -9,7 +9,8 @@ public record CatalogosDTO(
         List<OpcionCatalogoDTO> tiposMoneda,
         List<OpcionCatalogoDTO> listasPrecio
 ) {
-    public record OpcionCatalogoDTO(Long id, String nombre) {
+    public record OpcionCatalogoDTO(Long id, String nombre, Long condicionIvaId) {
+        public OpcionCatalogoDTO(Long id, String nombre) { this(id, nombre, null); }
     }
 
     public record ArticuloCatalogoDTO(
