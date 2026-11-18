@@ -15,6 +15,8 @@ export interface FacturaRequestDTO {
 }
 
 export interface FacturaReporteDTO {
+  identificador: string;
+  puntoVentaNumero: number;
   id: number;
   numeroFactura: number | null;
   fechaEmision: string;

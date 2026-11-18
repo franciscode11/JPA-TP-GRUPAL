@@ -12,6 +12,7 @@ let resolverConfirmacion;
 let temporizadorBusqueda;
 let temporizadorAviso;
 let facturasVisibles = [];
+const ultimasFechasAutorizadas = new Map();
 let destinoCliente = "cliente-id";
 let paginaClientes = 0;
 let busquedaClientes = 0;
@@ -449,18 +450,27 @@ function accionesFactura(factura) {
         const detalle = factura.cae ? `CAE ${escapar(factura.cae)}` : "Comprobante bloqueado";
         return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button><span class="accion-bloqueada"><i data-lucide="lock-keyhole"></i>${detalle}</span>`;
     }
-    const emitirDeshabilitado = !estadoArca?.configurada ? "disabled" : "";
-    const tituloEmitir = estadoArca?.configurada ? "Solicitar CAE en homologación" : escapar(estadoArca?.mensaje);
+    const ultimaFecha = ultimasFechasAutorizadas.get(factura.puntoVentaNumero);
+    const fechaAnterior = ultimaFecha && factura.fechaEmision < ultimaFecha;
+    const emitirDeshabilitado = !estadoArca?.configurada || fechaAnterior ? "disabled" : "";
+    const tituloEmitir = fechaAnterior ? "Editá la fecha: es anterior al último comprobante autorizado."
+        : estadoArca?.configurada ? "Solicitar CAE en homologación" : escapar(estadoArca?.mensaje);
     const etiqueta = factura.numeroFactura == null ? `borrador #${factura.id}` : `factura #${factura.numeroFactura}`;
     return `
     <button class="boton-tabla emitir" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}" title="${tituloEmitir}" ${emitirDeshabilitado}>
       <i data-lucide="send"></i><span>Emitir ARCA</span>
     </button>
     <button class="boton-tabla editar" type="button" data-id="${factura.id}"><i data-lucide="pencil"></i><span>Editar</span></button>
-    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>`;
+    <button class="boton-tabla peligro eliminar" type="button" data-id="${factura.id}" data-etiqueta="${etiqueta}"><i data-lucide="trash-2"></i><span>Eliminar</span></button>
+    ${fechaAnterior ? '<small class="ayuda-fecha">Editá la fecha antes de emitir.</small>' : ""}`;
 }
 function renderizarFacturas(pagina) {
     facturasVisibles = pagina.contenido;
+    pagina.contenido.filter(factura => factura.estado === "EMITIDA").forEach(factura => {
+        const ultima = ultimasFechasAutorizadas.get(factura.puntoVentaNumero) || "";
+        if (factura.fechaEmision > ultima)
+            ultimasFechasAutorizadas.set(factura.puntoVentaNumero, factura.fechaEmision);
+    });
     elemento("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
     const cuerpo = elemento("#facturas-body");
     if (pagina.contenido.length === 0) {
@@ -469,7 +479,7 @@ function renderizarFacturas(pagina) {
     else {
         cuerpo.innerHTML = pagina.contenido.map((factura) => `
       <tr>
-        <td><strong>${factura.numeroFactura == null ? `Borrador #${factura.id}` : `#${String(factura.numeroFactura).padStart(8, "0")}`}</strong><small>${escapar(factura.condicionIva)}</small></td>
+        <td><strong>${escapar(factura.identificador)}</strong><small>${escapar(factura.condicionIva)}</small></td>
         <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
         <td>${escapar(factura.clienteDenominacion)}</td>
         <td>${escapar(factura.puntoVentaDescripcion)}</td>
@@ -622,7 +632,7 @@ async function mostrarComprobante(reporte) {
     const factura = await servicio.obtenerFactura(reporte.id);
     const modal = elemento("#modal-comprobante");
     elemento("#comprobante-contenido").innerHTML = `
-    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>#${String(reporte.numeroFactura).padStart(8, "0")}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
+    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>${escapar(reporte.identificador)}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
     <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
     ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}

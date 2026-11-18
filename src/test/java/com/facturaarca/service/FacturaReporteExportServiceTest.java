@@ -29,8 +29,8 @@ class FacturaReporteExportServiceTest {
         try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(excel))) {
             assertThat(libro.getSheet("Facturas").getRow(0).getCell(0).getStringCellValue())
                     .isEqualTo("Nro. factura");
-            assertThat(libro.getSheet("Facturas").getRow(1).getCell(0).getNumericCellValue())
-                    .isEqualTo(1001);
+            assertThat(libro.getSheet("Facturas").getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("00000-00001001");
             assertThat(libro.getSheet("Facturas").getRow(1).getCell(2).getStringCellValue())
                     .isEqualTo("Consumidor Final");
         }

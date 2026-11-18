@@ -101,11 +101,7 @@ public class FacturaReporteExportService {
             int fila = 1;
             for (FacturaReporteDTO factura : facturas) {
                 Row row = hoja.createRow(fila++);
-                if (factura.getNumeroFactura() == null) {
-                    row.createCell(0).setCellValue("Borrador #" + factura.getId());
-                } else {
-                    row.createCell(0).setCellValue(factura.getNumeroFactura());
-                }
+                row.createCell(0).setCellValue(factura.getIdentificador());
 
                 Cell fecha = row.createCell(1);
                 fecha.setCellValue(factura.getFechaEmision());
@@ -148,9 +144,7 @@ public class FacturaReporteExportService {
     }
 
     private String numeroVisible(FacturaReporteDTO factura) {
-        return factura.getNumeroFactura() == null
-                ? "Borrador #" + factura.getId()
-                : String.valueOf(factura.getNumeroFactura());
+        return factura.getIdentificador();
     }
 
     private void agregarCelda(PdfPTable tabla, String texto, int alineacion) {

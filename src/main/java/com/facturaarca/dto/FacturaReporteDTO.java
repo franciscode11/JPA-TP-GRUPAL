@@ -29,6 +29,7 @@ public class FacturaReporteDTO {
     private String cae;
     private String resultadoArca;
     private String motivoRechazo;
+    private int puntoVentaNumero;
 
     public FacturaReporteDTO(
             Long id,
@@ -43,7 +44,8 @@ public class FacturaReporteDTO {
             String observaciones,
             String cae,
             String resultadoArca,
-            String motivoRechazo
+            String motivoRechazo,
+            int puntoVentaNumero
     ) {
         this.id = id;
         this.numeroFactura = numeroFactura;
@@ -58,6 +60,19 @@ public class FacturaReporteDTO {
         this.cae = cae;
         this.resultadoArca = resultadoArca;
         this.motivoRechazo = motivoRechazo;
+        this.puntoVentaNumero = puntoVentaNumero;
+    }
+
+    public FacturaReporteDTO(Long id, Long numeroFactura, Date fechaEmision, String clienteDenominacion,
+            String condicionIva, String puntoVentaDescripcion, double importeTotal, long cantidadItems,
+            String estado, String observaciones, String cae, String resultadoArca, String motivoRechazo) {
+        this(id, numeroFactura, fechaEmision, clienteDenominacion, condicionIva, puntoVentaDescripcion,
+                importeTotal, cantidadItems, estado, observaciones, cae, resultadoArca, motivoRechazo, 0);
+    }
+
+    public String getIdentificador() {
+        return numeroFactura == null ? "Borrador #" + id
+                : String.format("%05d-%08d", puntoVentaNumero, numeroFactura);
     }
 
     public FacturaReporteDTO(

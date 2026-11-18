@@ -82,9 +82,11 @@ public class ArcaHomologacionClient {
             TicketAcceso ticket = obtenerTicket();
             int puntoVenta = factura.getPuntoVenta().getNumero();
             int tipo = config.getComprobanteTipo();
-            long numero = ultimoAutorizado(ticket, puntoVenta, tipo) + 1;
+            long ultimo = ultimoAutorizado(ticket, puntoVenta, tipo);
+            validarFechaContraUltimo(ticket, factura, puntoVenta, tipo, ultimo);
+            long numero = ultimo + 1;
             return solicitarCae(ticket, factura, puntoVenta, tipo, numero);
-        } catch (ArcaException exception) {
+        } catch (ArcaException | IllegalArgumentException exception) {
             throw exception;
         } catch (Exception exception) {
             String detalle = exception.getMessage();
@@ -223,6 +225,24 @@ public class ArcaHomologacionClient {
                 sobreWsfe(cuerpo)
         );
         return Long.parseLong(texto(parsearXml(respuesta), "CbteNro"));
+    }
+
+    private void validarFechaContraUltimo(TicketAcceso ticket, FacturaVenta factura, int puntoVenta,
+                                         int tipo, long ultimo) throws Exception {
+        if (ultimo == 0) return;
+        String cuerpo = """
+                <ar:FECompConsultar>%s<ar:FeCompConsReq>
+                  <ar:CbteTipo>%d</ar:CbteTipo><ar:CbteNro>%d</ar:CbteNro><ar:PtoVta>%d</ar:PtoVta>
+                </ar:FeCompConsReq></ar:FECompConsultar>
+                """.formatted(auth(ticket), tipo, ultimo, puntoVenta);
+        Document documento = parsearXml(enviarSoap(config.getWsfeUrl(),
+                NAMESPACE_WSFE + "FECompConsultar", sobreWsfe(cuerpo)));
+        LocalDate ultimaFecha = LocalDate.parse(texto(documento, "CbteFch"), FECHA_ARCA);
+        if (fechaLocal(factura.getFechaEmision()).isBefore(ultimaFecha)) {
+            throw new IllegalArgumentException("Editá la fecha del borrador: debe ser igual o posterior al "
+                    + ultimaFecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    + ", fecha del último comprobante autorizado en este punto de venta.");
+        }
     }
 
     private ResultadoArca solicitarCae(
