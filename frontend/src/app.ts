@@ -47,10 +47,12 @@ let paginaArticulos = 0;
 let ultimaPaginaArticulos: PaginaDTO<ArticuloCatalogoDTO> | null = null;
 let resolverConfirmacion: ((confirmada: boolean) => void) | undefined;
 let temporizadorBusqueda: number | undefined;
+let temporizadorAviso: number | undefined;
 let facturasVisibles: FacturaReporteDTO[] = [];
 let destinoCliente = "cliente-id";
 let paginaClientes = 0;
 let busquedaClientes = 0;
+let solicitudFacturas = 0;
 
 async function cargarClientes(): Promise<void> {
   const solicitud = ++busquedaClientes;
@@ -106,7 +108,8 @@ function notificar(mensaje: string, tipo: "exito" | "error" = "exito"): void {
   aviso.className = `aviso visible ${tipo}`;
   aviso.querySelector("button")?.addEventListener("click", () => aviso.classList.remove("visible"));
   renderizarIconos();
-  if (tipo === "exito") window.setTimeout(() => aviso.classList.remove("visible"), 6000);
+  window.clearTimeout(temporizadorAviso);
+  temporizadorAviso = window.setTimeout(() => aviso.classList.remove("visible"), 3000);
 }
 
 const MESES = [
@@ -305,7 +308,11 @@ function personalizarSelector(select: HTMLSelectElement): void {
 
 function personalizarControles(raiz: ParentNode = document): void {
   raiz.querySelectorAll<HTMLInputElement>("input[data-calendario]").forEach(personalizarFecha);
-  raiz.querySelectorAll<HTMLSelectElement>("select.control").forEach(personalizarSelector);
+  raiz.querySelectorAll<HTMLSelectElement>("select.control:not([data-explorador])").forEach(personalizarSelector);
+  document.querySelectorAll<HTMLSelectElement>("select[data-explorador]").forEach(select => {
+    const boton = document.querySelector<HTMLButtonElement>(`[data-buscar-cliente="${select.id}"]`);
+    if (boton) boton.innerHTML = `<span>${escapar(select.selectedOptions[0]?.textContent || "Elegir cliente")}</span><i data-lucide="search"></i>`;
+  });
   renderizarIconos();
 }
 
@@ -523,7 +530,7 @@ function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
   elemento<HTMLElement>("#contador-resultados").textContent = `${pagina.totalElementos} ${pagina.totalElementos === 1 ? "comprobante" : "comprobantes"}`;
   const cuerpo = elemento<HTMLTableSectionElement>("#facturas-body");
   if (pagina.contenido.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="8" class="tabla-vacia">No hay comprobantes para los filtros elegidos.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="8"><div class="vacio-comprobantes"><i data-lucide="file-search"></i><strong>No se encontraron comprobantes</strong><span>Probá con otro número o cambiá los filtros.</span></div></td></tr>';
   } else {
     cuerpo.innerHTML = pagina.contenido.map((factura) => `
       <tr>
@@ -546,16 +553,25 @@ function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
 }
 
 async function cargarFacturas(): Promise<void> {
+  const solicitud = ++solicitudFacturas;
   const carga = elemento<HTMLElement>("#estado-carga");
   carga.classList.add("visible");
   try {
     const pagina = await servicio.obtenerFacturas(filtrosActuales());
+    if (solicitud !== solicitudFacturas) return;
     renderizarFacturas(pagina);
     actualizarDescargas();
   } catch (error) {
-    notificar((error as Error).message, "error");
+    if (solicitud !== solicitudFacturas) return;
+    facturasVisibles = [];
+    elemento("#contador-resultados").textContent = "Búsqueda no disponible";
+    elemento("#facturas-body").innerHTML = '<tr><td colspan="8"><div class="vacio-comprobantes"><i data-lucide="wifi-off"></i><strong>No pudimos cargar los comprobantes</strong><span>Revisá la conexión con el servidor y volvé a buscar.</span></div></td></tr>';
+    elemento("#pagina-estado").textContent = "Sin resultados disponibles";
+    elemento<HTMLButtonElement>("#pagina-anterior").disabled = true;
+    elemento<HTMLButtonElement>("#pagina-siguiente").disabled = true;
+    renderizarIconos();
   } finally {
-    carga.classList.remove("visible");
+    if (solicitud === solicitudFacturas) carga.classList.remove("visible");
   }
 }
 
@@ -654,16 +670,15 @@ async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
   const factura = await servicio.obtenerFactura(reporte.id);
   const modal = elemento<HTMLDialogElement>("#modal-comprobante");
   elemento<HTMLElement>("#comprobante-contenido").innerHTML = `
-    <p class="modal-tipo">Homologación · Sin validez fiscal</p>
-    <h2 id="comprobante-titulo">Factura #${String(reporte.numeroFactura).padStart(8, "0")}</h2>
-    <p>${escapar(reporte.fechaEmision)} · ${escapar(reporte.puntoVentaDescripcion)}</p>
-    <p><strong>${escapar(reporte.clienteDenominacion)}</strong><br>${escapar(reporte.condicionIva)}</p>
-    <p class="comprobante-cae"><strong>EMITIDA · CAE ${escapar(reporte.cae)}</strong><br>Vencimiento del CAE: ${escapar(factura.vencimientoCae)}</p>
+    <div class="factura-encabezado"><div><p class="modal-tipo">Comprobante de venta</p><h2 id="comprobante-titulo">Factura <span>#${String(reporte.numeroFactura).padStart(8, "0")}</span></h2><p>${escapar(reporte.puntoVentaDescripcion)}</p></div><span class="estado estado-emitida">Emitida</span></div>
+    <div class="factura-datos"><div><span>Cliente</span><strong>${escapar(reporte.clienteDenominacion)}</strong><small>${escapar(reporte.condicionIva)}</small></div><div><span>Fecha de emisión</span><strong>${fechaVisible(reporte.fechaEmision, "")}</strong></div></div>
     <div class="tabla-contenedor"><table class="tabla"><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio</th><th>Bonif.</th><th>Total</th></tr></thead><tbody>
     ${factura.detalles.map((detalle) => `<tr><td>${escapar(detalle.articuloCodigo)} · ${escapar(detalle.articuloNombre)}</td><td>${detalle.cantidad}</td><td>${dinero(detalle.precioUnitario)}</td><td>${detalle.porcentajeBonificacion}%</td><td>${dinero(detalle.importeSubtotal)}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="comprobante-total">Total ${dinero(reporte.importeTotal)}</p>
-    ${factura.observaciones ? `<p>${escapar(factura.observaciones)}</p>` : ""}`;
+    <div class="factura-resumen"><div><span>Autorización ARCA</span><strong>CAE ${escapar(reporte.cae)}</strong><small>Vence el ${fechaVisible(factura.vencimientoCae || "", "Sin fecha")}</small></div><div class="factura-total"><span>Total</span><strong>${dinero(reporte.importeTotal)}</strong></div></div>
+    ${factura.observaciones ? `<div class="factura-nota"><span>Observaciones</span><p>${escapar(factura.observaciones)}</p></div>` : ""}
+    <p class="factura-testing"><i data-lucide="shield-check"></i>Homologación · Sin validez fiscal</p>`;
+  renderizarIconos();
   modal.showModal();
   modal.classList.add("visible");
 }

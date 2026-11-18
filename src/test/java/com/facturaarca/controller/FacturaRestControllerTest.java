@@ -66,6 +66,9 @@ class FacturaRestControllerTest {
                 .andExpect(jsonPath("$.contenido[0].fechaEmision").value("2026-03-15"))
                 .andExpect(jsonPath("$.contenido[0].cantidadItems").value(2))
                 .andExpect(jsonPath("$.totalElementos").value(1));
+        org.mockito.Mockito.verify(facturaService).buscarFacturasPaginadas(
+                eq(java.sql.Date.valueOf("2026-03-01")), eq(java.sql.Date.valueOf("2026-03-31")),
+                eq("EMITIDA"), eq(1000d), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test

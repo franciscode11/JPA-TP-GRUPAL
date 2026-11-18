@@ -45,8 +45,8 @@ public class FacturaRestController {
 
     @GetMapping
     public PaginaDTO<FacturaReporteDTO> buscarFacturas(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaHasta,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
@@ -56,7 +56,7 @@ public class FacturaRestController {
             @RequestParam(defaultValue = "10") int tamanio
     ) {
         return facturaService.buscarFacturasPaginadas(
-                fechaDesde, fechaHasta, estado, montoMinimo,
+                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo,
                 numeroFactura, clienteId, informadaArca, pagina, tamanio
         );
     }
@@ -93,8 +93,8 @@ public class FacturaRestController {
 
     @GetMapping(value = "/reporte.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> descargarPdf(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaHasta,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
@@ -102,15 +102,15 @@ public class FacturaRestController {
             @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, clienteId, informadaArca
         );
         return archivo(exportService.generarPdf(facturas), PDF, "reporte-facturas.pdf");
     }
 
     @GetMapping(value = "/reporte.xlsx", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     public ResponseEntity<byte[]> descargarExcel(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date fechaHasta,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate fechaHasta,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Double montoMinimo,
             @RequestParam(required = false) Long numeroFactura,
@@ -118,9 +118,13 @@ public class FacturaRestController {
             @RequestParam(required = false) Boolean informadaArca
     ) {
         List<FacturaReporteDTO> facturas = facturaService.buscarFacturasFiltradas(
-                fechaDesde, fechaHasta, estado, montoMinimo, numeroFactura, clienteId, informadaArca
+                fechaSql(fechaDesde), fechaSql(fechaHasta), estado, montoMinimo, numeroFactura, clienteId, informadaArca
         );
         return archivo(exportService.generarExcel(facturas), XLSX, "reporte-facturas.xlsx");
+    }
+
+    private Date fechaSql(java.time.LocalDate fecha) {
+        return fecha == null ? null : java.sql.Date.valueOf(fecha);
     }
 
     private ResponseEntity<byte[]> archivo(byte[] contenido, MediaType tipo, String nombre) {

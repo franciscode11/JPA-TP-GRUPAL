@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-1">
+  <link rel="stylesheet" href="/css/styles.css?v=20261118-4">
 </head>
 <body>
   <div class="barra-superior"></div>
@@ -35,10 +35,10 @@
         <label>Número<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 1001"></label>
         <label>Desde<input id="filtro-desde" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Hasta<input id="filtro-hasta" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
-        <label>Cliente<select id="filtro-cliente" class="control"><option value="">Todos</option></select><button type="button" class="boton secundario" data-buscar-cliente="filtro-cliente"><i data-lucide="search"></i>Buscar cliente</button></label>
+        <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button></label>
         <label>Estado
           <select id="filtro-estado" class="control">
-            <option value="">Todos</option><option>PENDIENTE</option><option>EMITIDA</option><option>ANULADA</option>
+            <option value="">Todos</option><option>PENDIENTE</option><option>EMITIDA</option>
           </select>
         </label>
         <label>Información ARCA
@@ -70,7 +70,7 @@
       <form id="factura-form">
         <div class="grilla cabecera-factura">
           <label>Fecha de emisión<input id="fecha-emision" type="hidden" data-calendario data-placeholder="Elegir fecha" required></label>
-          <label>Cliente<select id="cliente-id" class="control" required></select><button type="button" class="boton secundario" data-buscar-cliente="cliente-id"><i data-lucide="search"></i>Buscar cliente</button></label>
+          <label>Cliente<select id="cliente-id" class="control" data-explorador hidden required></select><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Elegir cliente</span><i data-lucide="search"></i></button></label>
           <label>Condición IVA<select id="condicion-iva-id" class="control" required></select></label>
           <label>Punto de venta<select id="punto-venta-id" class="control" required></select></label>
           <label>Moneda<select id="tipo-moneda-id" class="control" required></select></label>
@@ -166,6 +166,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-3"></script>
+  <script type="module" src="/js/app.js?v=20261118-4"></script>
 </body>
 </html>
