@@ -553,7 +553,8 @@ function actualizarDescargas(): void {
 
 function accionesFactura(factura: FacturaReporteDTO): string {
   if (factura.estado !== "PENDIENTE") {
-    return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button>`;
+    return `<button class="boton-tabla ver" type="button" data-id="${factura.id}"><i data-lucide="file-text"></i><span>Ver factura</span></button>
+      ${factura.estado === "EMITIDA" ? `<button class="boton-tabla peligro eliminar" type="button" aria-label="Anular factura #${factura.id}" title="Anular factura" data-id="${factura.id}" data-etiqueta="factura #${factura.id}"><i data-lucide="trash-2"></i><span>Anular</span></button>` : ""}`;
   }
   const ultimaFecha = ultimasFechasAutorizadas.get(factura.puntoVentaNumero);
   const fechaAnterior = ultimaFecha && factura.fechaEmision < ultimaFecha;
@@ -731,12 +732,13 @@ async function cargarFacturaParaEditar(id: number): Promise<void> {
 async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
   const factura = await servicio.obtenerFactura(reporte.id);
   const anulada = factura.estado === "ANULADA";
+  elemento<HTMLAnchorElement>("#descargar-comprobante").href = `/api/facturas/${reporte.id}/pdf`;
   const modal = elemento<HTMLDialogElement>("#modal-comprobante");
   elemento<HTMLElement>("#comprobante-contenido").innerHTML = `
     <header class="factura-encabezado">
       <div>
         <p class="modal-tipo">Comprobante #${reporte.id}</p>
-        <h2 id="comprobante-titulo">${anulada ? "Comprobante anulado" : "Factura C"} <span>${anulada ? "#" + reporte.id : escapar(reporte.identificador)}</span></h2>
+        <h2 id="comprobante-titulo">${anulada ? "Comprobante anulado" : "Factura C"} <span>${reporte.numeroFactura == null ? "#" + reporte.id : escapar(reporte.identificador)}</span></h2>
       </div>
       <span class="estado estado-${anulada ? "anulada" : "emitida"}"><i data-lucide="${anulada ? "ban" : "check"}" aria-hidden="true"></i>${anulada ? "Anulada" : "Emitida"}</span>
     </header>
@@ -850,8 +852,8 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
     }
     if (boton.classList.contains("eliminar")) {
       const confirmada = await pedirConfirmacion({
-        tipo: "Eliminar borrador",
-        titulo: `¿Eliminar ${boton.dataset.etiqueta}?`,
+        tipo: "Baja del comprobante",
+        titulo: `¿Dar de baja ${boton.dataset.etiqueta}?`,
         descripcion: "Quedará como ANULADA en el historial, con fecha de baja. Se conservarán sus artículos y no podrá editarse ni emitirse.",
         confirmar: "Eliminar",
         accion: "eliminar",

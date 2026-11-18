@@ -36,6 +36,33 @@ class FacturaReporteExportServiceTest {
         }
     }
 
+    @Test
+    void comprobanteIndividualConservaTodosLosRenglonesYLaAutorizacionAlAnular() throws Exception {
+        var reporte = factura();
+        reporte.setEstado("ANULADA");
+        reporte.setCae("12345678901234");
+        var detalles = java.util.stream.IntStream.range(0, 50)
+                .mapToObj(i -> new com.facturaarca.dto.FacturaDetalleEdicionDTO(
+                        1L, 1L, "COD-" + i, "Producto " + i, "Minorista", 100, 1, 0, 100))
+                .toList();
+        var datos = new com.facturaarca.dto.FacturaEdicionDTO(1L, 1001L, new Date(),
+                1L, 1L, 1L, 1L, "ANULADA", "Observaciones de prueba", detalles,
+                new Date(), "DNI 12345678", new Date());
+        var lector = new com.lowagie.text.pdf.PdfReader(service.generarComprobante(reporte, datos));
+        try {
+            assertThat(lector.getNumberOfPages()).isGreaterThan(1);
+            var texto = new StringBuilder();
+            var extractor = new com.lowagie.text.pdf.parser.PdfTextExtractor(lector);
+            for (int pagina = 1; pagina <= lector.getNumberOfPages(); pagina++) {
+                texto.append(extractor.getTextFromPage(pagina));
+            }
+            assertThat(texto.toString()).contains("Producto 0", "Producto 49", "12345678901234",
+                    "ANULADA EN EL SISTEMA", "Fecha de baja", "Observaciones de prueba");
+        } finally {
+            lector.close();
+        }
+    }
+
     private FacturaReporteDTO factura() {
         return new FacturaReporteDTO(
                 1L,

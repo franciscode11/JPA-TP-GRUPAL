@@ -68,6 +68,15 @@ public class FacturaRestController {
         return ResponseEntity.created(URI.create("/api/facturas/" + creada.getId())).body(creada);
     }
 
+    @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<byte[]> descargarComprobante(@PathVariable Long id) {
+        var factura = facturaService.obtenerParaEdicion(id);
+        var reporte = facturaService.obtenerReporte(id);
+        return archivo(exportService.generarComprobante(reporte, factura), PDF,
+                "comprobante-" + id + ".pdf");
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<FacturaEdicionDTO> obtenerFactura(@PathVariable Long id) {
         return ResponseEntity.ok(facturaService.obtenerParaEdicion(id));

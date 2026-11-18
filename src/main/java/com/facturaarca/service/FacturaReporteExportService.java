@@ -40,6 +40,137 @@ public class FacturaReporteExportService {
             "Punto de venta", "Importe total", "Ítems", "N.º interno"
     };
 
+    public byte[] generarComprobante(FacturaReporteDTO reporte,
+                                    com.facturaarca.dto.FacturaEdicionDTO factura) {
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        Document documento = new Document(PageSize.A4, 42, 42, 42, 48);
+        Color tinta = new Color(25, 25, 25);
+        Color gris = new Color(110, 110, 110);
+        Color suave = new Color(246, 246, 244);
+        Color estado = switch (reporte.getEstado()) {
+            case "ANULADA" -> new Color(157, 53, 53);
+            case "EMITIDA" -> new Color(36, 90, 66);
+            default -> new Color(128, 93, 19);
+        };
+        var moneda = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-AR"));
+        var decimales = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-AR"));
+        var fecha = new SimpleDateFormat("dd/MM/yyyy");
+        var fechaHora = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        fechaHora.setTimeZone(java.util.TimeZone.getTimeZone("America/Argentina/Mendoza"));
+        try {
+            PdfWriter writer = PdfWriter.getInstance(documento, salida);
+            writer.setPageEvent(new com.lowagie.text.pdf.PdfPageEventHelper() {
+                @Override
+                public void onEndPage(PdfWriter escritor, Document doc) {
+                    com.lowagie.text.pdf.ColumnText.showTextAligned(escritor.getDirectContent(),
+                            Element.ALIGN_LEFT, new Phrase("Homologación · Sin validez fiscal",
+                                    FontFactory.getFont(FontFactory.HELVETICA, 8, gris)),
+                            doc.left(), 24, 0);
+                    com.lowagie.text.pdf.ColumnText.showTextAligned(escritor.getDirectContent(),
+                            Element.ALIGN_RIGHT, new Phrase("Página " + escritor.getPageNumber(),
+                                    FontFactory.getFont(FontFactory.HELVETICA, 8, gris)),
+                            doc.right(), 24, 0);
+                }
+            });
+            documento.addTitle("Comprobante #" + reporte.getId());
+            documento.open();
+            documento.add(new Paragraph("SISTEMA DE FACTURACIÓN",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, gris)));
+            Paragraph titulo = new Paragraph(reporte.getNumeroFactura() == null
+                    ? "Comprobante #" + reporte.getId() : "Factura C",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 30, tinta));
+            titulo.setSpacingBefore(14);
+            documento.add(titulo);
+            Paragraph numero = new Paragraph(reporte.getIdentificador(),
+                    FontFactory.getFont(FontFactory.HELVETICA, 14, gris));
+            numero.setSpacingAfter(18);
+            documento.add(numero);
+
+            PdfPTable cabecera = new PdfPTable(new float[]{1, 1});
+            cabecera.setWidthPercentage(100);
+            celdaComprobante(cabecera, "ESTADO\n" + reporte.getEstado(), 10, estado, suave, false);
+            celdaComprobante(cabecera, "FECHA DE EMISIÓN\n" + fecha.format(reporte.getFechaEmision()),
+                    10, tinta, suave, false);
+            celdaComprobante(cabecera, "CLIENTE\n" + reporte.getClienteDenominacion() + "\n"
+                    + factura.documentoCliente() + "\n" + reporte.getCondicionIva(),
+                    11, tinta, Color.WHITE, false);
+            celdaComprobante(cabecera, "PUNTO DE VENTA\n" + reporte.getPuntoVentaNumero() + " · "
+                    + reporte.getPuntoVentaDescripcion() + "\n\nN.º interno #" + reporte.getId(),
+                    10, gris, Color.WHITE, false);
+            cabecera.setSpacingAfter(20);
+            documento.add(cabecera);
+
+            PdfPTable detalles = new PdfPTable(new float[]{3.6f, .8f, 1.6f, .8f, 1.8f});
+            detalles.setWidthPercentage(100);
+            detalles.setHeaderRows(1);
+            detalles.setSplitLate(false);
+            for (String texto : List.of("ARTÍCULO", "CANT.", "PRECIO UNIT.", "DTO.", "IMPORTE")) {
+                celdaComprobante(detalles, texto, 8, Color.WHITE, tinta, false);
+            }
+            for (var detalle : factura.detalles()) {
+                celdaComprobante(detalles, detalle.articuloNombre() + "\n" + detalle.articuloCodigo()
+                        + " · " + detalle.listaPrecioNombre(), 9, tinta, Color.WHITE, false);
+                celdaComprobante(detalles, decimales.format(detalle.cantidad()), 9, tinta, Color.WHITE, true);
+                celdaComprobante(detalles, moneda.format(detalle.precioUnitario()), 9, tinta, Color.WHITE, true);
+                celdaComprobante(detalles, decimales.format(detalle.porcentajeBonificacion()) + "%",
+                        9, gris, Color.WHITE, true);
+                celdaComprobante(detalles, moneda.format(detalle.importeSubtotal()), 9, tinta, Color.WHITE, true);
+            }
+            documento.add(detalles);
+            PdfPTable total = new PdfPTable(new float[]{1, 1});
+            total.setWidthPercentage(100);
+            total.setKeepTogether(true);
+            celdaComprobante(total, "TOTAL · PESOS ARGENTINOS", 10, tinta, suave, false);
+            celdaComprobante(total, moneda.format(reporte.getImporteTotal()), 19, tinta, suave, true);
+            total.setSpacingAfter(22);
+            documento.add(total);
+
+            if (reporte.getCae() != null && !reporte.getCae().isBlank()) {
+                Paragraph autorizacion = new Paragraph("AUTORIZACIÓN DE HOMOLOGACIÓN\nCAE "
+                        + reporte.getCae() + "\nVencimiento "
+                        + (factura.vencimientoCae() == null ? "Sin fecha" : fecha.format(factura.vencimientoCae())),
+                        FontFactory.getFont(FontFactory.HELVETICA, 10, tinta));
+                autorizacion.setLeading(16);
+                autorizacion.setKeepTogether(true);
+                autorizacion.setSpacingAfter(16);
+                documento.add(autorizacion);
+            }
+            if (factura.fechaBaja() != null) {
+                Paragraph baja = new Paragraph("ANULADA EN EL SISTEMA\nFecha de baja "
+                        + fechaHora.format(factura.fechaBaja()),
+                        FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, estado));
+                baja.setKeepTogether(true);
+                baja.setSpacingAfter(16);
+                documento.add(baja);
+            }
+            if (factura.observaciones() != null && !factura.observaciones().isBlank()) {
+                Paragraph observaciones = new Paragraph("OBSERVACIONES\n" + factura.observaciones(),
+                        FontFactory.getFont(FontFactory.HELVETICA, 10, gris));
+                observaciones.setLeading(15);
+                observaciones.setKeepTogether(true);
+                documento.add(observaciones);
+            }
+        } catch (DocumentException exception) {
+            throw new IllegalStateException("No se pudo generar el PDF del comprobante", exception);
+        } finally {
+            documento.close();
+        }
+        return salida.toByteArray();
+    }
+
+    private void celdaComprobante(PdfPTable tabla, String texto, float tamanio, Color color,
+                                  Color fondo, boolean derecha) {
+        PdfPCell celda = new PdfPCell(new Phrase(texto,
+                FontFactory.getFont(FontFactory.HELVETICA, tamanio, color)));
+        celda.setBorder(com.lowagie.text.Rectangle.BOTTOM);
+        celda.setBorderColor(new Color(228, 228, 228));
+        celda.setBackgroundColor(fondo);
+        celda.setPadding(11);
+        celda.setLeading(0, 1.4f);
+        celda.setHorizontalAlignment(derecha ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+        tabla.addCell(celda);
+    }
+
     public byte[] generarPdf(List<FacturaReporteDTO> facturas) {
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         Document documento = new Document(PageSize.A4.rotate(), 28, 28, 30, 30);

@@ -644,3 +644,11 @@ body:has(#modal-comprobante[open]) { overflow: hidden; }
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .detalle-tabla .control { width: 100%; min-width: 0; }
+
+.factura-acciones { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.factura-acciones a { text-decoration: none; }
+@media (max-width: 680px) {
+  #modal-comprobante .factura-pie { flex-wrap: wrap; }
+  #modal-comprobante .factura-pie p { flex-basis: 100%; }
+  #modal-comprobante .factura-pie .factura-acciones { grid-column: 1 / -1; justify-self: end; }
+}

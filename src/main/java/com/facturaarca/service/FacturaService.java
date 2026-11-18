@@ -136,6 +136,11 @@ public class FacturaService {
     }
 
     @Transactional(readOnly = true)
+    public FacturaReporteDTO obtenerReporte(Long id) {
+        return convertirAReporte(buscarFactura(id, false));
+    }
+
+    @Transactional(readOnly = true)
     public FacturaEdicionDTO obtenerParaEdicion(Long id) {
         FacturaVenta factura = buscarFactura(id, false);
         return new FacturaEdicionDTO(
@@ -244,9 +249,9 @@ public class FacturaService {
     @Transactional
     public void eliminar(Long id) {
         FacturaVenta factura = buscarFactura(id, true);
-        if (!"PENDIENTE".equals(factura.getEstado())) {
+        if (!List.of("PENDIENTE", "EMITIDA").contains(factura.getEstado())) {
             throw new IllegalStateException(
-                    "Sólo se pueden dar de baja comprobantes pendientes"
+                    "El comprobante ya está anulado"
             );
         }
         Date ahora = new Date();

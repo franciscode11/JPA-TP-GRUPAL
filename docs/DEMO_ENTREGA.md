@@ -43,3 +43,9 @@ La variante presentada integra ARCA en homologación, incluye filtros, explorado
 Ejecutar com.facturaarca.Main desde IntelliJ inicia el servidor web. Maven utiliza el mismo punto de entrada. La configuración opcional de homologación se puede guardar fuera del repositorio en ~/.config/factura-arca/homologacion/application.properties.
 
 Por pedido del grupo, Eliminar ahora da de baja sólo pendientes: conserva cabecera y detalles, marca ANULADA y registra fechaBaja, fechaAnulacion y usuarioBaja. El filtro ANULADA y Ver factura permiten consultar el historial. Las emitidas con CAE siguen bloqueadas. Esta baja de pendientes difiere del DELETE físico del integrador actualizado.
+
+## Corrección de anulación y PDF individual
+
+La baja admite PENDIENTE y EMITIDA. Conserva cabecera, detalles, número fiscal y CAE, registra fecha y usuario de baja y muestra ANULADA. Esta transición se registra en la aplicación académica; no envía una revocación a ARCA.
+
+Ver factura permite descargar /api/facturas/{id}/pdf. El PDF individual incluye estado, cliente, documento, artículos, lista, cantidades, precios, descuentos, total, CAE, vencimiento y fecha de baja cuando corresponde. Los detalles largos continúan en páginas con encabezados repetidos.

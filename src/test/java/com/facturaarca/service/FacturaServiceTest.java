@@ -188,6 +188,12 @@ class FacturaServiceTest {
         org.mockito.Mockito.verify(facturaRepository, org.mockito.Mockito.never()).delete(any());
         assertThatThrownBy(() -> service.eliminar(8L)).isInstanceOf(IllegalStateException.class);
         factura.setEstado("EMITIDA");
-        assertThatThrownBy(() -> service.eliminar(8L)).isInstanceOf(IllegalStateException.class);
+        factura.setCae("12345678901234");
+        factura.setNumero(12L);
+        service.eliminar(8L);
+        assertThat(factura.getEstado()).isEqualTo("ANULADA");
+        assertThat(factura.getCae()).isEqualTo("12345678901234");
+        assertThat(factura.getNumero()).isEqualTo(12L);
+        assertThat(factura.getDetalles()).containsExactly(detalle);
     }
 }
