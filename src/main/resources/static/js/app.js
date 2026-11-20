@@ -296,6 +296,9 @@ function personalizarControles(raiz = document) {
     raiz.querySelectorAll("select.control:not([data-explorador])").forEach(personalizarSelector);
     document.querySelectorAll("select[data-explorador]").forEach(select => {
         const boton = document.querySelector(`[data-buscar-cliente="${select.id}"]`);
+        const limpiar = document.querySelector(`[data-limpiar-cliente="${select.id}"]`);
+        if (limpiar)
+            limpiar.hidden = !select.value;
         if (boton)
             boton.innerHTML = `<span>${escapar(select.selectedOptions[0]?.textContent || "Elegir cliente")}</span><i data-lucide="search"></i>`;
     });
@@ -306,7 +309,7 @@ function opciones(datos, inicial) {
     return primera + datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 function cargarCatalogos() {
-    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes, "Consumidor Final (sin cliente)");
+    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes, "Sin cliente");
     elemento("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva, "Se completa al elegir cliente");
     elemento("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
     elemento("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -554,7 +557,7 @@ function renderizarFacturas(pagina) {
       <tr>
         <td><strong class="referencia">#${factura.id}</strong></td>
         <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
-        <td>${escapar(factura.clienteDenominacion)}<small>${escapar(factura.condicionIva)}</small></td>
+        <td>${escapar(factura.clienteDenominacion)}${factura.clienteDenominacion === factura.condicionIva ? "" : `<small>${escapar(factura.condicionIva)}</small>`}</td>
         <td>${escapar(factura.puntoVentaDescripcion)}</td>
         <td class="numero">${factura.cantidadItems}</td>
         <td class="numero destacado">${dinero(factura.importeTotal)}</td>
@@ -713,8 +716,8 @@ async function mostrarComprobante(reporte) {
     <dl class="factura-datos">
       <div class="factura-cliente">
         <dt>Cliente</dt>
-        <dd><strong>${escapar(reporte.clienteDenominacion)}</strong>
-          <small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></dd>
+        <dd><strong>${factura.clienteId === null ? "Sin cliente" : escapar(reporte.clienteDenominacion)}</strong>
+          ${factura.clienteId === null ? "" : `<small>${escapar(factura.documentoCliente)}</small>`}<small>${escapar(reporte.condicionIva)}</small></dd>
       </div>
       <div><dt>Fecha de emisión</dt><dd><time datetime="${escapar(reporte.fechaEmision)}">${fechaVisible(reporte.fechaEmision, "")}</time></dd></div>
       <div><dt>Punto de venta</dt><dd>${escapar(reporte.puntoVentaDescripcion)}</dd></div>
@@ -837,6 +840,15 @@ async function accionFactura(evento) {
     }
 }
 function enlazarEventos() {
+    document.querySelectorAll("[data-limpiar-cliente]").forEach(boton => boton.addEventListener("click", () => {
+        const select = elemento(`#${boton.dataset.limpiarCliente}`);
+        select.value = "";
+        if (select.id === "cliente-id") {
+            elemento("#condicion-iva-id").value = condicionConsumidorFinal();
+        }
+        personalizarControles(document);
+        document.querySelector(`[data-buscar-cliente="${select.id}"]`)?.focus();
+    }));
     document.querySelectorAll("[data-buscar-cliente]").forEach(boton => boton.addEventListener("click", () => {
         destinoCliente = boton.dataset.buscarCliente;
         paginaClientes = 0;
@@ -847,10 +859,6 @@ function enlazarEventos() {
         ++busquedaClientes;
         window.clearTimeout(temporizadorClientes);
         mostrarInicioClientes();
-        const sinCliente = elemento("#cliente-sin-asociar");
-        sinCliente.dataset.nombre = destinoCliente === "cliente-id" ? "Consumidor Final (sin cliente)" : "Todos";
-        sinCliente.textContent = destinoCliente === "cliente-id" ? "Continuar sin cliente asociado" : "Todos los clientes";
-        sinCliente.dataset.condicion = condicionConsumidorFinal();
         elemento("#buscar-cliente").focus();
     }));
     elemento("#cerrar-clientes").addEventListener("click", () => elemento("#modal-clientes").close());

@@ -91,8 +91,8 @@ public class FacturaReporteExportService {
             celdaComprobante(cabecera, "ESTADO\n" + reporte.getEstado(), 10, estado, suave, false);
             celdaComprobante(cabecera, "FECHA DE EMISIÓN\n" + fecha.format(reporte.getFechaEmision()),
                     10, tinta, suave, false);
-            celdaComprobante(cabecera, "CLIENTE\n" + reporte.getClienteDenominacion() + "\n"
-                    + factura.documentoCliente() + "\n" + reporte.getCondicionIva(),
+            celdaComprobante(cabecera, "CLIENTE\n" + (factura.clienteId() == null ? "Sin cliente" : reporte.getClienteDenominacion()
+                    + "\n" + factura.documentoCliente()) + "\n" + reporte.getCondicionIva(),
                     11, tinta, Color.WHITE, false);
             celdaComprobante(cabecera, "PUNTO DE VENTA\n" + reporte.getPuntoVentaNumero() + " · "
                     + reporte.getPuntoVentaDescripcion() + "\n\nN.º interno #" + reporte.getId(),

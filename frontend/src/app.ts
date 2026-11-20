@@ -351,6 +351,8 @@ function personalizarControles(raiz: ParentNode = document): void {
   raiz.querySelectorAll<HTMLSelectElement>("select.control:not([data-explorador])").forEach(personalizarSelector);
   document.querySelectorAll<HTMLSelectElement>("select[data-explorador]").forEach(select => {
     const boton = document.querySelector<HTMLButtonElement>(`[data-buscar-cliente="${select.id}"]`);
+    const limpiar = document.querySelector<HTMLButtonElement>(`[data-limpiar-cliente="${select.id}"]`);
+    if (limpiar) limpiar.hidden = !select.value;
     if (boton) boton.innerHTML = `<span>${escapar(select.selectedOptions[0]?.textContent || "Elegir cliente")}</span><i data-lucide="search"></i>`;
   });
   renderizarIconos();
@@ -362,7 +364,7 @@ function opciones(datos: OpcionCatalogoDTO[], inicial?: string): string {
 }
 
 function cargarCatalogos(): void {
-  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Consumidor Final (sin cliente)");
+  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Sin cliente");
   elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva, "Se completa al elegir cliente");
   elemento<HTMLSelectElement>("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
   elemento<HTMLSelectElement>("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -619,7 +621,7 @@ function renderizarFacturas(pagina: PaginaDTO<FacturaReporteDTO>): void {
       <tr>
         <td><strong class="referencia">#${factura.id}</strong></td>
         <td>${new Date(`${factura.fechaEmision}T12:00:00`).toLocaleDateString("es-AR")}</td>
-        <td>${escapar(factura.clienteDenominacion)}<small>${escapar(factura.condicionIva)}</small></td>
+        <td>${escapar(factura.clienteDenominacion)}${factura.clienteDenominacion === factura.condicionIva ? "" : `<small>${escapar(factura.condicionIva)}</small>`}</td>
         <td>${escapar(factura.puntoVentaDescripcion)}</td>
         <td class="numero">${factura.cantidadItems}</td>
         <td class="numero destacado">${dinero(factura.importeTotal)}</td>
@@ -774,8 +776,8 @@ async function mostrarComprobante(reporte: FacturaReporteDTO): Promise<void> {
     <dl class="factura-datos">
       <div class="factura-cliente">
         <dt>Cliente</dt>
-        <dd><strong>${escapar(reporte.clienteDenominacion)}</strong>
-          <small>${escapar(factura.documentoCliente)}</small><small>${escapar(reporte.condicionIva)}</small></dd>
+        <dd><strong>${factura.clienteId === null ? "Sin cliente" : escapar(reporte.clienteDenominacion)}</strong>
+          ${factura.clienteId === null ? "" : `<small>${escapar(factura.documentoCliente)}</small>`}<small>${escapar(reporte.condicionIva)}</small></dd>
       </div>
       <div><dt>Fecha de emisión</dt><dd><time datetime="${escapar(reporte.fechaEmision)}">${fechaVisible(reporte.fechaEmision, "")}</time></dd></div>
       <div><dt>Punto de venta</dt><dd>${escapar(reporte.puntoVentaDescripcion)}</dd></div>
@@ -898,6 +900,15 @@ async function accionFactura(evento: MouseEvent): Promise<void> {
 }
 
 function enlazarEventos(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-limpiar-cliente]").forEach(boton => boton.addEventListener("click", () => {
+    const select = elemento<HTMLSelectElement>(`#${boton.dataset.limpiarCliente}`);
+    select.value = "";
+    if (select.id === "cliente-id") {
+      elemento<HTMLSelectElement>("#condicion-iva-id").value = condicionConsumidorFinal();
+    }
+    personalizarControles(document);
+    document.querySelector<HTMLButtonElement>(`[data-buscar-cliente="${select.id}"]`)?.focus();
+  }));
   document.querySelectorAll<HTMLButtonElement>("[data-buscar-cliente]").forEach(boton => boton.addEventListener("click", () => {
     destinoCliente = boton.dataset.buscarCliente!;
     paginaClientes = 0;
@@ -907,10 +918,6 @@ function enlazarEventos(): void {
     ++busquedaClientes;
     window.clearTimeout(temporizadorClientes);
     mostrarInicioClientes();
-    const sinCliente = elemento<HTMLButtonElement>("#cliente-sin-asociar");
-    sinCliente.dataset.nombre = destinoCliente === "cliente-id" ? "Consumidor Final (sin cliente)" : "Todos";
-    sinCliente.textContent = destinoCliente === "cliente-id" ? "Continuar sin cliente asociado" : "Todos los clientes";
-    sinCliente.dataset.condicion = condicionConsumidorFinal();
     elemento<HTMLInputElement>("#buscar-cliente").focus();
   }));
   elemento("#cerrar-clientes").addEventListener("click", () => elemento<HTMLDialogElement>("#modal-clientes").close());

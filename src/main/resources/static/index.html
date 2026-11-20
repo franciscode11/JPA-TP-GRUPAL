@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261120-1">
+  <link rel="stylesheet" href="/css/styles.css?v=20261120-2">
 </head>
 <body>
   <header class="encabezado">
@@ -25,7 +25,7 @@
         <label>Número interno<input id="filtro-numero" class="control" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,8}" maxlength="9" title="Número interno de hasta 9 dígitos" placeholder="Ej. 52"></label>
         <label>Desde<input id="filtro-desde" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
         <label>Hasta<input id="filtro-hasta" type="hidden" data-calendario data-placeholder="Elegir fecha"></label>
-        <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button></label>
+        <label>Cliente<select id="filtro-cliente" class="control" data-explorador hidden><option value="">Todos</option></select><span class="cliente-campo"><button type="button" class="cliente-control" data-buscar-cliente="filtro-cliente"><span>Todos</span><i data-lucide="search"></i></button><button type="button" class="cliente-quitar" data-limpiar-cliente="filtro-cliente" aria-label="Quitar filtro de cliente" title="Quitar filtro de cliente" hidden><i data-lucide="x" aria-hidden="true"></i></button></span></label>
         <label>Estado
           <select id="filtro-estado" class="control">
             <option value="">Todos</option><option>PENDIENTE</option><option>EMITIDA</option><option>ANULADA</option>
@@ -60,7 +60,7 @@
       <form id="factura-form">
         <div class="grilla cabecera-factura">
           <label>Fecha de emisión<input id="fecha-emision" type="hidden" data-calendario data-placeholder="Elegir fecha" required></label>
-          <label>Cliente (opcional)<select id="cliente-id" class="control" data-explorador hidden></select><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Consumidor Final (sin cliente)</span><i data-lucide="search"></i></button></label>
+          <label>Cliente (opcional)<select id="cliente-id" class="control" data-explorador hidden></select><span class="cliente-campo"><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Sin cliente</span><i data-lucide="search"></i></button><button type="button" class="cliente-quitar" data-limpiar-cliente="cliente-id" aria-label="Quitar cliente" title="Quitar cliente" hidden><i data-lucide="x" aria-hidden="true"></i></button></span></label>
           <label>Condición IVA del cliente<select id="condicion-iva-id" class="control" disabled></select></label>
           <label>Punto de venta<select id="punto-venta-id" class="control" required></select></label>
           <label>Moneda<select id="tipo-moneda-id" class="control" required></select></label>
@@ -142,7 +142,6 @@
     <div class="modal-contenido">
       <div class="modal-cabecera"><h2 id="clientes-titulo">Buscar cliente</h2><button id="cerrar-clientes" type="button" class="boton-icono" aria-label="Cerrar clientes"><i data-lucide="x"></i></button></div>
       <label>Nombre o CUIT<input id="buscar-cliente" type="search" maxlength="80" class="control" placeholder="Buscar por nombre o CUIT"></label>
-      <button id="cliente-sin-asociar" class="boton secundario" type="button" data-cliente="" data-nombre="Consumidor Final (sin cliente)">Continuar sin cliente asociado</button>
       <div id="clientes-resultados" class="articulos-resultados" aria-live="polite" aria-busy="false"></div>
       <div class="explorador-paginacion"><button id="clientes-anterior" type="button" class="boton secundario">Anterior</button><span id="clientes-pagina"></span><button id="clientes-siguiente" type="button" class="boton secundario">Siguiente</button></div>
     </div>
@@ -166,6 +165,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261120-1"></script>
+  <script type="module" src="/js/app.js?v=20261120-2"></script>
 </body>
 </html>

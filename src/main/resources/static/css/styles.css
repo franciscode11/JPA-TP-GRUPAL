@@ -659,13 +659,26 @@ body:has(#modal-comprobante[open]) { overflow: hidden; }
 .detalle-contenedor::-webkit-scrollbar-thumb { background: #8a8a85; border: 3px solid #efefec; border-radius: 8px; }
 .detalle-contenedor::-webkit-scrollbar-thumb:hover { background: #5f5f59; }
 
-#modal-clientes { height: min(660px, calc(100dvh - 32px)); overflow: hidden; }
-#modal-clientes .modal-contenido { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 14px; }
+#modal-clientes { height: min(560px, calc(100dvh - 32px)); overflow: hidden; }
+#modal-clientes .modal-contenido { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 18px; }
 #modal-clientes .modal-cabecera { margin: 0; }
 #buscar-cliente { font-size: .88rem; font-weight: 450; }
-#cliente-sin-asociar { justify-self: start; min-height: 32px; font-size: .78rem; }
 #clientes-resultados { min-height: 0; margin: 0; overflow-y: auto; align-content: start; scrollbar-gutter: stable; }
 #clientes-resultados .articulo-resultado { min-height: 46px; padding: 10px 12px; font-size: .84rem; }
 #clientes-resultados .resultado-vacio { min-height: 220px; }
 #clientes-resultados .resultado-vacio span { font-size: .8rem; }
 #modal-clientes .explorador-paginacion { margin: 0; }
+
+.cliente-campo { position: relative; display: block; min-width: 0; }
+.cliente-campo .cliente-control > span { flex: 1; min-width: 0; }
+.cliente-campo:has(.cliente-quitar:not([hidden])) .cliente-control > span { padding-right: 28px; }
+.cliente-campo .cliente-control > svg { flex-shrink: 0; }
+.cliente-quitar { position: absolute; right: 36px; top: 9px; display: grid; place-items: center; width: 26px; height: 26px; padding: 4px; color: var(--muted); border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.cliente-quitar[hidden] { display: none; }
+.cliente-quitar svg { width: 15px; height: 15px; }
+.cliente-quitar:hover { color: var(--danger); background: var(--danger-soft); }
+.cliente-quitar:focus-visible { outline: 2px solid var(--ink); }
+@media (max-height: 550px) {
+  #modal-clientes .modal-contenido { gap: 10px; padding: 16px; }
+  #clientes-resultados .resultado-vacio { min-height: 0; height: 100%; }
+}

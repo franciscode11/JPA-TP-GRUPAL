@@ -54,4 +54,4 @@ Ver factura permite descargar /api/facturas/{id}/pdf. El PDF individual incluye 
 
 La factura permite clienteId nulo. Representa Consumidor Final sin una ficha de cliente asociada y obliga a la condición de IVA código 5. Se puede quitar o volver a asociar el cliente al editar. La migración V7 permite cliente_id nulo en bases existentes. Ver factura y PDF admiten estos comprobantes.
 
-El catálogo inicial no precarga clientes. El buscador espera texto, agrupa la escritura durante 250 ms y solicita páginas de 20 registros al backend. Una consulta vacía devuelve una página vacía sin consultar clientes. El modal permite continuar sin cliente o limpiar el filtro con Todos los clientes.
+El catálogo inicial no precarga clientes. El buscador espera texto, agrupa la escritura durante 250 ms y solicita páginas de 20 registros al backend. Una consulta vacía devuelve una página vacía sin consultar clientes. El formulario muestra Sin cliente por defecto. Una cruz junto al cliente seleccionado permite quitarlo; en el buscador de filtros permite limpiar la selección.
