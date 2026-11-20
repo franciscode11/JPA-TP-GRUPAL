@@ -46,16 +46,7 @@ public class CatalogoService {
 
     @Transactional(readOnly = true)
     public CatalogosDTO obtenerCatalogos() {
-        List<CatalogosDTO.OpcionCatalogoDTO> clientes = unicos(
-                clienteRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 10,
-                        org.springframework.data.domain.Sort.by("denominacion"))).stream()
-                        .filter(cliente -> cliente.getFechaBaja() == null && cliente.getCondicionIva() != null)
-                        .map(cliente -> new CatalogosDTO.OpcionCatalogoDTO(
-                                cliente.getId(), cliente.getDenominacion().trim()
-                        ))
-                        .toList(),
-                opcion -> normalizar(opcion.nombre())
-        );
+        List<CatalogosDTO.OpcionCatalogoDTO> clientes = List.of();
 
         List<CatalogosDTO.OpcionCatalogoDTO> condiciones = unicos(
                 condicionIvaRepository.findAllByOrderByDenominacionAsc().stream()
@@ -103,6 +94,9 @@ public class CatalogoService {
         LimitesEntrada.paginacion(pagina, tamanio, 50);
         LimitesEntrada.longitud(texto, 80, "La búsqueda");
         String busqueda = texto == null ? "" : texto.trim();
+        if (busqueda.isBlank()) {
+            return PaginaDTO.crear(List.of(), pagina, tamanio, 0);
+        }
         var resultado = clienteRepository.buscarParaExplorador(
                 busqueda, org.springframework.data.domain.PageRequest.of(pagina, tamanio,
                         org.springframework.data.domain.Sort.by("denominacion").and(org.springframework.data.domain.Sort.by("id"))));

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema académico de facturación electrónica en homologación">
   <title>Sistema de facturación</title>
-  <link rel="stylesheet" href="/css/styles.css?v=20261118-21">
+  <link rel="stylesheet" href="/css/styles.css?v=20261120-1">
 </head>
 <body>
   <header class="encabezado">
@@ -60,7 +60,7 @@
       <form id="factura-form">
         <div class="grilla cabecera-factura">
           <label>Fecha de emisión<input id="fecha-emision" type="hidden" data-calendario data-placeholder="Elegir fecha" required></label>
-          <label>Cliente<select id="cliente-id" class="control" data-explorador hidden></select><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Elegir cliente</span><i data-lucide="search"></i></button></label>
+          <label>Cliente (opcional)<select id="cliente-id" class="control" data-explorador hidden></select><button type="button" class="cliente-control" data-buscar-cliente="cliente-id"><span>Consumidor Final (sin cliente)</span><i data-lucide="search"></i></button></label>
           <label>Condición IVA del cliente<select id="condicion-iva-id" class="control" disabled></select></label>
           <label>Punto de venta<select id="punto-venta-id" class="control" required></select></label>
           <label>Moneda<select id="tipo-moneda-id" class="control" required></select></label>
@@ -142,7 +142,8 @@
     <div class="modal-contenido">
       <div class="modal-cabecera"><h2 id="clientes-titulo">Buscar cliente</h2><button id="cerrar-clientes" type="button" class="boton-icono" aria-label="Cerrar clientes"><i data-lucide="x"></i></button></div>
       <label>Nombre o CUIT<input id="buscar-cliente" type="search" maxlength="80" class="control" placeholder="Buscar por nombre o CUIT"></label>
-      <div id="clientes-resultados" class="articulos-resultados"></div>
+      <button id="cliente-sin-asociar" class="boton secundario" type="button" data-cliente="" data-nombre="Consumidor Final (sin cliente)">Continuar sin cliente asociado</button>
+      <div id="clientes-resultados" class="articulos-resultados" aria-live="polite" aria-busy="false"></div>
       <div class="explorador-paginacion"><button id="clientes-anterior" type="button" class="boton secundario">Anterior</button><span id="clientes-pagina"></span><button id="clientes-siguiente" type="button" class="boton secundario">Siguiente</button></div>
     </div>
   </dialog>
@@ -165,6 +166,6 @@
   </dialog>
   <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
   <script src="/vendor/lucide.min.js?v=20261117-4"></script>
-  <script type="module" src="/js/app.js?v=20261118-21"></script>
+  <script type="module" src="/js/app.js?v=20261120-1"></script>
 </body>
 </html>

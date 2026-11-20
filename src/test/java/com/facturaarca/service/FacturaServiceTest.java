@@ -71,6 +71,7 @@ class FacturaServiceTest {
 
         CondicionIva condicionIva = new CondicionIva();
         condicionIva.setId(3L);
+        condicionIva.setCodigoAfip(5);
         condicionIva.setDenominacion("Consumidor Final");
         when(condicionIvaRepository.findById(3L)).thenReturn(Optional.of(condicionIva));
 
@@ -197,5 +198,35 @@ class FacturaServiceTest {
         assertThat(factura.getCae()).isEqualTo("12345678901234");
         assertThat(factura.getNumero()).isEqualTo(12L);
         assertThat(factura.getDetalles()).containsExactly(detalle);
+    }
+    @Test
+    void creaConsumidorFinalSinClienteYRechazaOtraCondicion() {
+        var request = new FacturaRequestDTO(new Date(), null, 3L, 4L, 5L,
+                null, List.of(new FacturaDetalleRequestDTO(7L, 1d, 0d)));
+        assertThat(service.crear(request).getClienteDenominacion()).isEqualTo("Consumidor Final");
+        condicionIvaRepository.findById(3L).orElseThrow().setCodigoAfip(1);
+        assertThatThrownBy(() -> service.crear(request)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Consumidor Final");
+    }
+
+    @Test
+    void permiteQuitarYVolverAAsociarElClienteAlEditar() {
+        var request = new FacturaRequestDTO(new Date(), 2L, 3L, 4L, 5L,
+                null, List.of(new FacturaDetalleRequestDTO(7L, 1d, 0d)));
+        service.crear(request);
+        var captor = org.mockito.ArgumentCaptor.forClass(FacturaVenta.class);
+        org.mockito.Mockito.verify(facturaRepository).saveAndFlush(captor.capture());
+        var factura = captor.getValue();
+        when(facturaRepository.findOneById(8L)).thenReturn(Optional.of(factura));
+        when(facturaRepository.findById(8L)).thenReturn(Optional.of(factura));
+        request.setClienteId(null);
+        assertThat(service.actualizar(8L, request).getClienteDenominacion()).isEqualTo("Consumidor Final");
+        assertThat(factura.getCliente()).isNull();
+        var detalle = service.obtenerParaEdicion(8L);
+        assertThat(detalle.clienteId()).isNull();
+        assertThat(detalle.documentoCliente()).isEqualTo("Sin identificación");
+        request.setClienteId(2L);
+        service.actualizar(8L, request);
+        assertThat(factura.getCliente().getId()).isEqualTo(2L);
     }
 }

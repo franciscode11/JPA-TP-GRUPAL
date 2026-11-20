@@ -56,24 +56,58 @@ const ultimasFechasAutorizadas = new Map<number, string>();
 let destinoCliente = "cliente-id";
 let paginaClientes = 0;
 let busquedaClientes = 0;
+let temporizadorClientes: number | undefined;
 let solicitudFacturas = 0;
+
+function condicionConsumidorFinal(): string {
+  return String(catalogos.condicionesIva.find(condicion =>
+    condicion.nombre.trim().toLowerCase() === "consumidor final")?.id ?? "");
+}
+
+function mostrarInicioClientes(): void {
+  elemento("#clientes-resultados").inert = false;
+  elemento("#clientes-resultados").setAttribute("aria-busy", "false");
+  elemento("#clientes-resultados").innerHTML = '<div class="resultado-vacio"><i data-lucide="user-search"></i><strong>Buscá un cliente</strong><span>Ingresá un nombre o documento para ver resultados.</span></div>';
+  elemento<HTMLButtonElement>("#clientes-anterior").disabled = true;
+  elemento<HTMLButtonElement>("#clientes-siguiente").disabled = true;
+  elemento("#clientes-pagina").textContent = "20 clientes por página";
+  renderizarIconos();
+}
 
 async function cargarClientes(): Promise<void> {
   const solicitud = ++busquedaClientes;
+  const texto = valor("buscar-cliente").trim();
+  if (!texto) {
+    mostrarInicioClientes();
+    return;
+  }
+  const resultados = elemento("#clientes-resultados");
+  resultados.setAttribute("aria-busy", "true");
+  resultados.inert = true;
+  elemento<HTMLButtonElement>("#clientes-anterior").disabled = true;
+  elemento<HTMLButtonElement>("#clientes-siguiente").disabled = true;
   try {
-    const query = new URLSearchParams({ q: valor("buscar-cliente"), pagina: String(paginaClientes), tamanio: "8" });
+    const query = new URLSearchParams({ q: texto, pagina: String(paginaClientes), tamanio: "20" });
     const respuesta = await fetch(`/api/catalogos/clientes?${query}`);
     if (!respuesta.ok) throw new Error("No se pudieron cargar los clientes.");
     const pagina = await respuesta.json() as PaginaDTO<OpcionCatalogoDTO>;
     if (solicitud !== busquedaClientes) return;
-    elemento("#clientes-resultados").innerHTML = pagina.contenido.length
+    resultados.innerHTML = pagina.contenido.length
       ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-condicion="${cliente.condicionIvaId ?? ""}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
       : '<div class="resultado-vacio"><i data-lucide="user-search"></i>No hay clientes para esta búsqueda.</div>';
+    resultados.scrollTop = 0;
     elemento<HTMLButtonElement>("#clientes-anterior").disabled = pagina.primera;
     elemento<HTMLButtonElement>("#clientes-siguiente").disabled = pagina.ultima;
     elemento("#clientes-pagina").textContent = `Página ${pagina.pagina + 1} de ${Math.max(1, pagina.totalPaginas)}`;
     renderizarIconos();
-  } catch (error) { notificar((error as Error).message, "error"); }
+  } catch (error) {
+    if (solicitud === busquedaClientes) notificar((error as Error).message, "error");
+  } finally {
+    if (solicitud === busquedaClientes) {
+      resultados.inert = false;
+      resultados.setAttribute("aria-busy", "false");
+    }
+  }
 }
 
 function elemento<T extends HTMLElement>(selector: string): T {
@@ -328,7 +362,7 @@ function opciones(datos: OpcionCatalogoDTO[], inicial?: string): string {
 }
 
 function cargarCatalogos(): void {
-  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Elegir cliente");
+  elemento<HTMLSelectElement>("#cliente-id").innerHTML = opciones(catalogos.clientes, "Consumidor Final (sin cliente)");
   elemento<HTMLSelectElement>("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva, "Se completa al elegir cliente");
   elemento<HTMLSelectElement>("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
   elemento<HTMLSelectElement>("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -359,7 +393,7 @@ function reiniciarFormulario(): void {
   elemento<HTMLElement>("#titulo-alta").textContent = "Nueva factura";
   elemento<HTMLFormElement>("#factura-form").reset();
   elemento<HTMLSelectElement>("#cliente-id").value = "";
-  elemento<HTMLSelectElement>("#condicion-iva-id").value = "";
+  elemento<HTMLSelectElement>("#condicion-iva-id").value = condicionConsumidorFinal();
   elemento<HTMLSelectElement>("#condicion-iva-id").disabled = true;
   elemento<HTMLInputElement>("#fecha-emision").value = fechaIso(new Date());
   items = [];
@@ -631,10 +665,6 @@ async function cargarFacturas(): Promise<void> {
 
 async function guardarFactura(evento: SubmitEvent): Promise<void> {
   evento.preventDefault();
-  if (!valor("cliente-id")) {
-    notificar("Elegí un cliente desde el buscador.", "error");
-    return;
-  }
   if (!valor("condicion-iva-id")) {
     notificar("El cliente no tiene una condición de IVA registrada. Elegí un cliente con datos completos.", "error");
     return;
@@ -654,7 +684,7 @@ async function guardarFactura(evento: SubmitEvent): Promise<void> {
 
   const request: FacturaRequestDTO = {
     fechaEmision: valor("fecha-emision"),
-    clienteId: Number(valor("cliente-id")),
+    clienteId: valor("cliente-id") ? Number(valor("cliente-id")) : null,
     condicionIvaId: Number(valor("condicion-iva-id")),
     puntoVentaId: Number(valor("punto-venta-id")),
     tipoMonedaId: Number(valor("tipo-moneda-id")),
@@ -699,11 +729,11 @@ async function cargarFacturaParaEditar(id: number): Promise<void> {
     elemento<HTMLElement>("#titulo-alta").textContent = `Editar borrador #${factura.id}`;
     elemento<HTMLInputElement>("#fecha-emision").value = factura.fechaEmision;
     const clienteSelect = elemento<HTMLSelectElement>("#cliente-id");
-    if (!Array.from(clienteSelect.options).some(opcion => opcion.value === String(factura.clienteId))) {
+    if (factura.clienteId !== null && !Array.from(clienteSelect.options).some(opcion => opcion.value === String(factura.clienteId))) {
       const reporte = facturasVisibles.find(actual => actual.id === id);
       clienteSelect.add(new Option(reporte?.clienteDenominacion ?? `Cliente #${factura.clienteId}`, String(factura.clienteId)));
     }
-    clienteSelect.value = String(factura.clienteId);
+    clienteSelect.value = factura.clienteId === null ? "" : String(factura.clienteId);
     elemento<HTMLSelectElement>("#condicion-iva-id").value = String(factura.condicionIvaId);
     elemento<HTMLSelectElement>("#punto-venta-id").value = String(factura.puntoVentaId);
     elemento<HTMLSelectElement>("#tipo-moneda-id").value = String(factura.tipoMonedaId);
@@ -874,13 +904,38 @@ function enlazarEventos(): void {
     elemento<HTMLInputElement>("#buscar-cliente").value = "";
     const modal = elemento<HTMLDialogElement>("#modal-clientes");
     modal.showModal(); modal.classList.add("visible");
-    void cargarClientes();
+    ++busquedaClientes;
+    window.clearTimeout(temporizadorClientes);
+    mostrarInicioClientes();
+    const sinCliente = elemento<HTMLButtonElement>("#cliente-sin-asociar");
+    sinCliente.dataset.nombre = destinoCliente === "cliente-id" ? "Consumidor Final (sin cliente)" : "Todos";
+    sinCliente.textContent = destinoCliente === "cliente-id" ? "Continuar sin cliente asociado" : "Todos los clientes";
+    sinCliente.dataset.condicion = condicionConsumidorFinal();
+    elemento<HTMLInputElement>("#buscar-cliente").focus();
   }));
   elemento("#cerrar-clientes").addEventListener("click", () => elemento<HTMLDialogElement>("#modal-clientes").close());
-  elemento("#buscar-cliente").addEventListener("input", () => { paginaClientes = 0; void cargarClientes(); });
+  elemento("#modal-clientes").addEventListener("close", () => {
+    ++busquedaClientes;
+    window.clearTimeout(temporizadorClientes);
+  });
+  elemento("#buscar-cliente").addEventListener("input", () => {
+    ++busquedaClientes;
+    window.clearTimeout(temporizadorClientes);
+    paginaClientes = 0;
+    if (!valor("buscar-cliente").trim()) {
+      mostrarInicioClientes();
+      elemento("#clientes-resultados").inert = false;
+      elemento("#clientes-resultados").setAttribute("aria-busy", "false");
+      return;
+    }
+    elemento("#clientes-resultados").inert = true;
+    elemento<HTMLButtonElement>("#clientes-anterior").disabled = true;
+    elemento<HTMLButtonElement>("#clientes-siguiente").disabled = true;
+    temporizadorClientes = window.setTimeout(() => void cargarClientes(), 250);
+  });
   elemento("#clientes-anterior").addEventListener("click", () => { paginaClientes--; void cargarClientes(); });
   elemento("#clientes-siguiente").addEventListener("click", () => { paginaClientes++; void cargarClientes(); });
-  elemento("#clientes-resultados").addEventListener("click", evento => {
+  elemento("#modal-clientes").addEventListener("click", evento => {
     const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>("[data-cliente]");
     if (!boton) return;
     const select = elemento<HTMLSelectElement>(`#${destinoCliente}`);

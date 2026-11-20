@@ -19,27 +19,58 @@ const ultimasFechasAutorizadas = new Map();
 let destinoCliente = "cliente-id";
 let paginaClientes = 0;
 let busquedaClientes = 0;
+let temporizadorClientes;
 let solicitudFacturas = 0;
+function condicionConsumidorFinal() {
+    return String(catalogos.condicionesIva.find(condicion => condicion.nombre.trim().toLowerCase() === "consumidor final")?.id ?? "");
+}
+function mostrarInicioClientes() {
+    elemento("#clientes-resultados").inert = false;
+    elemento("#clientes-resultados").setAttribute("aria-busy", "false");
+    elemento("#clientes-resultados").innerHTML = '<div class="resultado-vacio"><i data-lucide="user-search"></i><strong>Buscá un cliente</strong><span>Ingresá un nombre o documento para ver resultados.</span></div>';
+    elemento("#clientes-anterior").disabled = true;
+    elemento("#clientes-siguiente").disabled = true;
+    elemento("#clientes-pagina").textContent = "20 clientes por página";
+    renderizarIconos();
+}
 async function cargarClientes() {
     const solicitud = ++busquedaClientes;
+    const texto = valor("buscar-cliente").trim();
+    if (!texto) {
+        mostrarInicioClientes();
+        return;
+    }
+    const resultados = elemento("#clientes-resultados");
+    resultados.setAttribute("aria-busy", "true");
+    resultados.inert = true;
+    elemento("#clientes-anterior").disabled = true;
+    elemento("#clientes-siguiente").disabled = true;
     try {
-        const query = new URLSearchParams({ q: valor("buscar-cliente"), pagina: String(paginaClientes), tamanio: "8" });
+        const query = new URLSearchParams({ q: texto, pagina: String(paginaClientes), tamanio: "20" });
         const respuesta = await fetch(`/api/catalogos/clientes?${query}`);
         if (!respuesta.ok)
             throw new Error("No se pudieron cargar los clientes.");
         const pagina = await respuesta.json();
         if (solicitud !== busquedaClientes)
             return;
-        elemento("#clientes-resultados").innerHTML = pagina.contenido.length
+        resultados.innerHTML = pagina.contenido.length
             ? pagina.contenido.map(cliente => `<button type="button" class="articulo-resultado" data-cliente="${cliente.id}" data-condicion="${cliente.condicionIvaId ?? ""}" data-nombre="${escapar(cliente.nombre)}"><span>${escapar(cliente.nombre)}</span><i data-lucide="plus"></i></button>`).join("")
             : '<div class="resultado-vacio"><i data-lucide="user-search"></i>No hay clientes para esta búsqueda.</div>';
+        resultados.scrollTop = 0;
         elemento("#clientes-anterior").disabled = pagina.primera;
         elemento("#clientes-siguiente").disabled = pagina.ultima;
         elemento("#clientes-pagina").textContent = `Página ${pagina.pagina + 1} de ${Math.max(1, pagina.totalPaginas)}`;
         renderizarIconos();
     }
     catch (error) {
-        notificar(error.message, "error");
+        if (solicitud === busquedaClientes)
+            notificar(error.message, "error");
+    }
+    finally {
+        if (solicitud === busquedaClientes) {
+            resultados.inert = false;
+            resultados.setAttribute("aria-busy", "false");
+        }
     }
 }
 function elemento(selector) {
@@ -275,7 +306,7 @@ function opciones(datos, inicial) {
     return primera + datos.map((dato) => `<option value="${dato.id}">${escapar(dato.nombre)}</option>`).join("");
 }
 function cargarCatalogos() {
-    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes, "Elegir cliente");
+    elemento("#cliente-id").innerHTML = opciones(catalogos.clientes, "Consumidor Final (sin cliente)");
     elemento("#condicion-iva-id").innerHTML = opciones(catalogos.condicionesIva, "Se completa al elegir cliente");
     elemento("#punto-venta-id").innerHTML = opciones(catalogos.puntosVenta);
     elemento("#tipo-moneda-id").innerHTML = opciones(catalogos.tiposMoneda);
@@ -303,7 +334,7 @@ function reiniciarFormulario() {
     elemento("#titulo-alta").textContent = "Nueva factura";
     elemento("#factura-form").reset();
     elemento("#cliente-id").value = "";
-    elemento("#condicion-iva-id").value = "";
+    elemento("#condicion-iva-id").value = condicionConsumidorFinal();
     elemento("#condicion-iva-id").disabled = true;
     elemento("#fecha-emision").value = fechaIso(new Date());
     items = [];
@@ -573,10 +604,6 @@ async function cargarFacturas() {
 }
 async function guardarFactura(evento) {
     evento.preventDefault();
-    if (!valor("cliente-id")) {
-        notificar("Elegí un cliente desde el buscador.", "error");
-        return;
-    }
     if (!valor("condicion-iva-id")) {
         notificar("El cliente no tiene una condición de IVA registrada. Elegí un cliente con datos completos.", "error");
         return;
@@ -595,7 +622,7 @@ async function guardarFactura(evento) {
     }
     const request = {
         fechaEmision: valor("fecha-emision"),
-        clienteId: Number(valor("cliente-id")),
+        clienteId: valor("cliente-id") ? Number(valor("cliente-id")) : null,
         condicionIvaId: Number(valor("condicion-iva-id")),
         puntoVentaId: Number(valor("punto-venta-id")),
         tipoMonedaId: Number(valor("tipo-moneda-id")),
@@ -641,11 +668,11 @@ async function cargarFacturaParaEditar(id) {
         elemento("#titulo-alta").textContent = `Editar borrador #${factura.id}`;
         elemento("#fecha-emision").value = factura.fechaEmision;
         const clienteSelect = elemento("#cliente-id");
-        if (!Array.from(clienteSelect.options).some(opcion => opcion.value === String(factura.clienteId))) {
+        if (factura.clienteId !== null && !Array.from(clienteSelect.options).some(opcion => opcion.value === String(factura.clienteId))) {
             const reporte = facturasVisibles.find(actual => actual.id === id);
             clienteSelect.add(new Option(reporte?.clienteDenominacion ?? `Cliente #${factura.clienteId}`, String(factura.clienteId)));
         }
-        clienteSelect.value = String(factura.clienteId);
+        clienteSelect.value = factura.clienteId === null ? "" : String(factura.clienteId);
         elemento("#condicion-iva-id").value = String(factura.condicionIvaId);
         elemento("#punto-venta-id").value = String(factura.puntoVentaId);
         elemento("#tipo-moneda-id").value = String(factura.tipoMonedaId);
@@ -817,13 +844,38 @@ function enlazarEventos() {
         const modal = elemento("#modal-clientes");
         modal.showModal();
         modal.classList.add("visible");
-        void cargarClientes();
+        ++busquedaClientes;
+        window.clearTimeout(temporizadorClientes);
+        mostrarInicioClientes();
+        const sinCliente = elemento("#cliente-sin-asociar");
+        sinCliente.dataset.nombre = destinoCliente === "cliente-id" ? "Consumidor Final (sin cliente)" : "Todos";
+        sinCliente.textContent = destinoCliente === "cliente-id" ? "Continuar sin cliente asociado" : "Todos los clientes";
+        sinCliente.dataset.condicion = condicionConsumidorFinal();
+        elemento("#buscar-cliente").focus();
     }));
     elemento("#cerrar-clientes").addEventListener("click", () => elemento("#modal-clientes").close());
-    elemento("#buscar-cliente").addEventListener("input", () => { paginaClientes = 0; void cargarClientes(); });
+    elemento("#modal-clientes").addEventListener("close", () => {
+        ++busquedaClientes;
+        window.clearTimeout(temporizadorClientes);
+    });
+    elemento("#buscar-cliente").addEventListener("input", () => {
+        ++busquedaClientes;
+        window.clearTimeout(temporizadorClientes);
+        paginaClientes = 0;
+        if (!valor("buscar-cliente").trim()) {
+            mostrarInicioClientes();
+            elemento("#clientes-resultados").inert = false;
+            elemento("#clientes-resultados").setAttribute("aria-busy", "false");
+            return;
+        }
+        elemento("#clientes-resultados").inert = true;
+        elemento("#clientes-anterior").disabled = true;
+        elemento("#clientes-siguiente").disabled = true;
+        temporizadorClientes = window.setTimeout(() => void cargarClientes(), 250);
+    });
     elemento("#clientes-anterior").addEventListener("click", () => { paginaClientes--; void cargarClientes(); });
     elemento("#clientes-siguiente").addEventListener("click", () => { paginaClientes++; void cargarClientes(); });
-    elemento("#clientes-resultados").addEventListener("click", evento => {
+    elemento("#modal-clientes").addEventListener("click", evento => {
         const boton = evento.target.closest("[data-cliente]");
         if (!boton)
             return;

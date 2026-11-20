@@ -49,3 +49,9 @@ Por pedido del grupo, Eliminar ahora da de baja sólo pendientes: conserva cabec
 La baja admite únicamente PENDIENTE. Las EMITIDAS están bloqueadas tanto en la API como en la interfaz. Conserva cabecera, detalles, número fiscal y CAE, registra fecha y usuario de baja y muestra ANULADA. Esta transición se registra en la aplicación académica; no envía una revocación a ARCA.
 
 Ver factura permite descargar /api/facturas/{id}/pdf. El PDF individual incluye estado, cliente, documento, artículos, lista, cantidades, precios, descuentos, total, CAE, vencimiento y fecha de baja cuando corresponde. Los detalles largos continúan en páginas con encabezados repetidos.
+
+## Cliente opcional y búsqueda bajo demanda
+
+La factura permite clienteId nulo. Representa Consumidor Final sin una ficha de cliente asociada y obliga a la condición de IVA código 5. Se puede quitar o volver a asociar el cliente al editar. La migración V7 permite cliente_id nulo en bases existentes. Ver factura y PDF admiten estos comprobantes.
+
+El catálogo inicial no precarga clientes. El buscador espera texto, agrupa la escritura durante 250 ms y solicita páginas de 20 registros al backend. Una consulta vacía devuelve una página vacía sin consultar clientes. El modal permite continuar sin cliente o limpiar el filtro con Todos los clientes.

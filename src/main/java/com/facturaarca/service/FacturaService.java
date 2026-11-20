@@ -147,7 +147,7 @@ public class FacturaService {
                 factura.getId(),
                 factura.getNumero(),
                 factura.getFechaEmision(),
-                factura.getCliente().getId(),
+                factura.getCliente() == null ? null : factura.getCliente().getId(),
                 factura.getCondicionIva().getId(),
                 puntoVentaRepository.findFirstByNumeroOrderByIdAsc(factura.getPuntoVenta().getNumero())
                         .map(punto -> punto.getId())
@@ -171,7 +171,7 @@ public class FacturaService {
                         ))
                         .toList(),
                 factura.getCaeFechaVencimiento(),
-                (Integer.valueOf(96).equals(factura.getCliente().getTipoDocumento()) ? "DNI " : "CUIT/CUIL ")
+                factura.getCliente() == null ? "Sin identificación" : (Integer.valueOf(96).equals(factura.getCliente().getTipoDocumento()) ? "DNI " : "CUIT/CUIL ")
                         + (factura.getCliente().getNumeroDocumento() == null
                         ? factura.getCliente().getCuitCuil() : factura.getCliente().getNumeroDocumento()),
                 factura.getFechaBaja()
@@ -191,10 +191,8 @@ public class FacturaService {
         if (request.getFechaEmision() != null) {
             factura.setFechaEmision(request.getFechaEmision());
         }
-        if (request.getClienteId() != null) {
-            factura.setCliente(clienteRepository.findById(request.getClienteId())
-                    .orElseThrow(() -> noExiste("Cliente", request.getClienteId())));
-        }
+        factura.setCliente(request.getClienteId() == null ? null : clienteRepository.findById(request.getClienteId())
+                .orElseThrow(() -> noExiste("Cliente", request.getClienteId())));
         if (request.getCondicionIvaId() != null) {
             factura.setCondicionIva(condicionIvaRepository.findById(request.getCondicionIvaId())
                     .orElseThrow(() -> noExiste("Condición de IVA", request.getCondicionIvaId())));
@@ -266,6 +264,12 @@ public class FacturaService {
     }
 
     private void validarCondicionDelCliente(FacturaVenta factura) {
+        if (factura.getCliente() == null) {
+            if (factura.getCondicionIva().getCodigoAfip() != 5) {
+                throw new IllegalArgumentException("Sin cliente asociado la condición de IVA debe ser Consumidor Final");
+            }
+            return;
+        }
         var condicion = factura.getCliente().getCondicionIva();
         if (condicion != null && !condicion.getId().equals(factura.getCondicionIva().getId())) {
             throw new IllegalArgumentException("La condición de IVA debe coincidir con la registrada para el cliente: "
@@ -277,7 +281,7 @@ public class FacturaService {
         // El número fiscal lo asigna ARCA al aprobar la emisión.
         factura.setNumero(null);
         factura.setFechaEmision(request.getFechaEmision());
-        factura.setCliente(clienteRepository.findById(request.getClienteId())
+        factura.setCliente(request.getClienteId() == null ? null : clienteRepository.findById(request.getClienteId())
                 .orElseThrow(() -> noExiste("Cliente", request.getClienteId())));
         factura.setCondicionIva(condicionIvaRepository.findById(request.getCondicionIvaId())
                 .orElseThrow(() -> noExiste("Condición de IVA", request.getCondicionIvaId())));
@@ -392,11 +396,10 @@ public class FacturaService {
         if (request.getFechaEmision() == null) {
             throw new IllegalArgumentException("La fecha de emisión es obligatoria");
         }
-        if (request.getClienteId() == null
-                || request.getCondicionIvaId() == null
+        if (request.getCondicionIvaId() == null
                 || request.getPuntoVentaId() == null
                 || request.getTipoMonedaId() == null) {
-            throw new IllegalArgumentException("Los IDs de cliente, condición de IVA, punto de venta y moneda son obligatorios");
+            throw new IllegalArgumentException("Los IDs de condición de IVA, punto de venta y moneda son obligatorios");
         }
         if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
             throw new IllegalArgumentException("La factura debe tener al menos un detalle");

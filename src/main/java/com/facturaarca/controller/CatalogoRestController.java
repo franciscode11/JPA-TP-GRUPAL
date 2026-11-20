@@ -38,7 +38,7 @@ public class CatalogoRestController {
     public PaginaDTO<CatalogosDTO.OpcionCatalogoDTO> buscarClientes(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "0") int pagina,
-            @RequestParam(defaultValue = "8") int tamanio) {
+            @RequestParam(defaultValue = "20") int tamanio) {
         return catalogoService.buscarClientes(q, pagina, tamanio);
     }
 }
