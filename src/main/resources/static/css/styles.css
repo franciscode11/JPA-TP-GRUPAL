@@ -665,7 +665,7 @@ body:has(#modal-comprobante[open]) { overflow: hidden; }
 #buscar-cliente { font-size: .88rem; font-weight: 450; }
 #clientes-resultados { min-height: 0; margin: 0; overflow-y: auto; align-content: start; scrollbar-gutter: stable; }
 #clientes-resultados .articulo-resultado { min-height: 46px; padding: 10px 12px; font-size: .84rem; }
-#clientes-resultados .resultado-vacio { min-height: 220px; }
+#clientes-resultados .resultado-vacio { min-height: 220px; height: 100%; padding: 24px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; }
 #clientes-resultados .resultado-vacio span { font-size: .8rem; }
 #modal-clientes .explorador-paginacion { margin: 0; }
 

@@ -55,3 +55,12 @@ Ver factura permite descargar /api/facturas/{id}/pdf. El PDF individual incluye 
 La factura permite clienteId nulo. Representa Consumidor Final sin una ficha de cliente asociada y obliga a la condición de IVA código 5. Se puede quitar o volver a asociar el cliente al editar. La migración V7 permite cliente_id nulo en bases existentes. Ver factura y PDF admiten estos comprobantes.
 
 El catálogo inicial no precarga clientes. El buscador espera texto, agrupa la escritura durante 250 ms y solicita páginas de 20 registros al backend. Una consulta vacía devuelve una página vacía sin consultar clientes. El formulario muestra Sin cliente por defecto. Una cruz junto al cliente seleccionado permite quitarlo; en el buscador de filtros permite limpiar la selección.
+
+
+### Clientes y facturas adicionales para demostrar la paginación (20/11/2026)
+
+- Se agregaron 24 registros `Cliente de prueba 01` a `Cliente de prueba 24`, todos consumidores finales, con DNI sintéticos y contacto/domicilio ficticios. No son personas verificadas ni usuarios oficiales provistos por ARCA. La aceptación en homologación no valida su identidad.
+- Buscar `Cliente de prueba` muestra dos páginas desde el backend: 20 resultados y 4 resultados. Sin escribir una búsqueda no se consultan clientes.
+- El script manual `scripts/clientes-demostracion.sql` permite recrear los clientes en una base local preparada. Es idempotente y no cambia las fichas de los clientes reales. No se ejecuta automáticamente al arrancar.
+- Se crearon las facturas internas #94 a #105 con fecha 20/11/2026. Las #94 a #99 recibieron CAE en homologación; las #100 a #105 se dejaron pendientes para probar edición y baja lógica.
+- Numeración autorizada: punto de venta 1, números 24 a 26; punto de venta 2, números 6 a 8. Cada secuencia fiscal depende del punto de venta y tipo de comprobante; los identificadores internos son únicos globalmente.
